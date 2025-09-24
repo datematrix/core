@@ -1,0 +1,30 @@
+{
+  "name": "@datematrix/core",
+  "version": "1.0.0",
+  "description": "Calendar state data structures for the DateMatrix Calendar",
+  "keywords": [
+    "calendar",
+    "scheduler"
+  ],
+  "homepage": "https://github.com/datematrix/core#readme",
+  "bugs": {
+    "url": "https://github.com/datematrix/core/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/datematrix/core.git"
+  },
+  "license": "MIT",
+  "author": "ordidxzero",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest",
+    "build": "esbuild src/index.ts --bundle --outfile=out.js --minify"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
+    "esbuild": "0.25.10",
+    "vitest": "^3.2.4"
+  }
+}
