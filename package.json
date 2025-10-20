@@ -20,7 +20,7 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest",
-    "build": "esbuild src/index.ts --bundle --outfile=out.js --minify"
+    "build": "esbuild src/index.ts --bundle --outfile=dist/out.js --minify"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.4",
