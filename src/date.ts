@@ -5,7 +5,7 @@
 export const DATETIME_UNIT = {
   MINUTES: "minutes",
   HOURS: "hours",
-  DATE: "date",
+  DAYS: "days",
   WEEK: "week",
   MONTH: "month",
   YEAR: "year",
@@ -94,7 +94,7 @@ export class BaseDate {
       return datetime.month - (12 * yearDiff + this.month);
     }
 
-    if (unit === DATETIME_UNIT.DATE) {
+    if (unit === DATETIME_UNIT.DAYS) {
       return Math.floor((datetime._ms - this._ms) / (24 * 60 * 60 * 1000));
     }
 
@@ -126,7 +126,7 @@ export class BaseDate {
         utc = Date.UTC(this.year, value, this.date, this.hours, this.minutes);
         break;
 
-      case DATETIME_UNIT.DATE:
+      case DATETIME_UNIT.DAYS:
         utc = Date.UTC(this.year, this.month, value, this.hours, this.minutes);
         break;
 
@@ -169,7 +169,7 @@ export class BaseDate {
     }
 
     const DATE = 24 * HOURS;
-    if (unit === DATETIME_UNIT.DATE) {
+    if (unit === DATETIME_UNIT.DAYS) {
       return new BaseDate(this._ms + value * DATE);
     }
 
@@ -366,7 +366,7 @@ export class DateTime {
    */
   diff(
     datetime: DateTime,
-    unit: Exclude<DateTimeUnit, "week"> = DATETIME_UNIT.DATE
+    unit: Exclude<DateTimeUnit, "week"> = DATETIME_UNIT.DAYS
   ): number {
     return this._base.diff(datetime._base, unit);
   }
@@ -501,7 +501,7 @@ export class DateTime {
     unit: Exclude<DateTimeUnit, "minutes" | "hours">,
     weekStartsOn?: WeekStartsOnType
   ): DateTime {
-    if (unit === DATETIME_UNIT.DATE) {
+    if (unit === DATETIME_UNIT.DAYS) {
       return this.setTime(0, 0);
     }
 
@@ -512,10 +512,10 @@ export class DateTime {
       }
       if (weekStartsOn === WEEK_STARTS_ON.MON) {
         dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        return this.add(-dayOfWeek, DATETIME_UNIT.DATE).setTime(0, 0);
+        return this.add(-dayOfWeek, DATETIME_UNIT.DAYS).setTime(0, 0);
       }
       if (weekStartsOn === WEEK_STARTS_ON.SUN) {
-        return this.add(-dayOfWeek, DATETIME_UNIT.DATE).setTime(0, 0);
+        return this.add(-dayOfWeek, DATETIME_UNIT.DAYS).setTime(0, 0);
       }
       throw Error("Not Implemented");
     }
@@ -523,7 +523,7 @@ export class DateTime {
     if (unit === DATETIME_UNIT.MONTH) {
       const newBase = this._view
         .set(this._view.month, DATETIME_UNIT.MONTH)
-        .set(1, DATETIME_UNIT.DATE)
+        .set(1, DATETIME_UNIT.DAYS)
         .set(0, DATETIME_UNIT.HOURS)
         .set(0, DATETIME_UNIT.MINUTES);
       return DateTime.fromTZ(newBase, this._tz);
@@ -532,7 +532,7 @@ export class DateTime {
     const newBase = this._view
       .set(this._view.year, DATETIME_UNIT.YEAR)
       .set(0, DATETIME_UNIT.MONTH)
-      .set(1, DATETIME_UNIT.DATE)
+      .set(1, DATETIME_UNIT.DAYS)
       .set(0, DATETIME_UNIT.HOURS)
       .set(0, DATETIME_UNIT.MINUTES);
     return DateTime.fromTZ(newBase, this._tz);
@@ -544,7 +544,7 @@ export class DateTime {
     weekStartsOn: WeekStartsOnType
   ): DateTime;
   endOf(unit: DateTimeUnit, weekStartsOn?: WeekStartsOnType): DateTime {
-    if (unit === DATETIME_UNIT.DATE) {
+    if (unit === DATETIME_UNIT.DAYS) {
       return this.setTime(23, 59);
     }
 
@@ -556,11 +556,11 @@ export class DateTime {
           return this.setTime(23, 59);
         }
         dayOfWeek = 7 - dayOfWeek;
-        return this.add(dayOfWeek, DATETIME_UNIT.DATE).setTime(23, 59);
+        return this.add(dayOfWeek, DATETIME_UNIT.DAYS).setTime(23, 59);
       }
       if (weekStartsOn === WEEK_STARTS_ON.SUN) {
         dayOfWeek = 6 - dayOfWeek;
-        return this.add(dayOfWeek, DATETIME_UNIT.DATE).setTime(23, 59);
+        return this.add(dayOfWeek, DATETIME_UNIT.DAYS).setTime(23, 59);
       }
       throw Error("Not Implemented");
     }
@@ -568,7 +568,7 @@ export class DateTime {
     if (unit === DATETIME_UNIT.MONTH) {
       const newBase = this._view
         .set(this._view.month + 1, DATETIME_UNIT.MONTH)
-        .set(0, DATETIME_UNIT.DATE)
+        .set(0, DATETIME_UNIT.DAYS)
         .set(23, DATETIME_UNIT.HOURS)
         .set(59, DATETIME_UNIT.MINUTES);
       return DateTime.fromTZ(newBase, this._tz);
@@ -577,7 +577,7 @@ export class DateTime {
     const newBase = this._view
       .set(this._view.year + 1, DATETIME_UNIT.YEAR)
       .set(0, DATETIME_UNIT.MONTH)
-      .set(0, DATETIME_UNIT.DATE)
+      .set(0, DATETIME_UNIT.DAYS)
       .set(23, DATETIME_UNIT.HOURS)
       .set(59, DATETIME_UNIT.MINUTES);
     return DateTime.fromTZ(newBase, this._tz);
@@ -639,9 +639,9 @@ export class DateTimeRange {
    */
   getDateTimes(): DateTime[] {
     if (this._dates.length === 0) {
-      const diff = this._start.diff(this._end, DATETIME_UNIT.DATE);
+      const diff = this._start.diff(this._end, DATETIME_UNIT.DAYS);
       this._dates = Array.from({ length: diff + 1 }, (_, i) =>
-        this._start.add(i, DATETIME_UNIT.DATE)
+        this._start.add(i, DATETIME_UNIT.DAYS)
       );
     }
     return this._dates;

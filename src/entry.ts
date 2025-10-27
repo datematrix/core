@@ -1,13 +1,13 @@
 import { DateTime } from "./date";
 
-type EntryPriority = 0 | 1 | 2 | 3 | 4 | 5;
+type EntryPriority = 0 | 1 | 2 | 3;
 type EntryType = "TASK" | "EVENT" | "SLOT";
-type EntryStatus = "Default" | "Inbox" | "Someday" | "Deleted";
+type EntryStatus = "Default" | "Deleted";
 
 export interface EntryConfig {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   review?: string;
   startDate?: DateTime;
   endDate?: DateTime;
@@ -17,6 +17,10 @@ export interface EntryConfig {
   tags: string[];
   priority: EntryPriority;
   type: EntryType;
+  directory?: string;
+  url?: string;
+  flag?: boolean;
+  mention?: any;
   status: EntryStatus;
 }
 
