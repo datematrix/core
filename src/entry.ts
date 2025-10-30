@@ -27,7 +27,7 @@ export interface EntryConfig {
 /**
  * 일정, 할일 등을 나타내는 클래스
  */
-export class Entry implements EntryConfig {
+export class Entry {
   private _config: EntryConfig;
 
   constructor(config: EntryConfig) {

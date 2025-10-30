@@ -30,12 +30,12 @@ export function truncateTime(time: number) {
   return time - (time % TIME_UNIT);
 }
 
-function validateISO(iso: string) {
+function validateISO(iso: string): [number, number, number, number, number] {
   const match = isoUtcRegex.exec(iso);
   if (match === null) throw Error("Invalid ISO String.");
 
   const [_, year, month, date, hours, minutes, __, ___, ____] = match;
-  return [+year, +month - 1, +date, +hours, +minutes];
+  return [+year!, +month! - 1, +date!, +hours!, +minutes!];
 }
 
 /**
@@ -286,7 +286,7 @@ export class DateTime {
       timeZone,
     }).format(new Date());
 
-    return +formattedDate.split("GMT")[1];
+    return +formattedDate.split("GMT")[1]!;
   }
 
   static fromUTC(utcString: string, tz?: string): DateTime {

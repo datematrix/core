@@ -6,4 +6,4 @@ export {
   type DateTimeUnit,
   type WeekStartsOnType,
 } from "./date";
-export { EntryConfig, Entry } from "./entry";
+export { type EntryConfig, Entry } from "./entry";
