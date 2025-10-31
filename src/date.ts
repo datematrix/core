@@ -312,7 +312,7 @@ export class DateTime {
 
   static now(tz?: string): DateTime {
     const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60 * 1000;
+    const utc = now.getTime();
     return new DateTime(utc, tz);
   }
 
