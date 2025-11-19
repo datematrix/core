@@ -7,3 +7,4 @@ export {
   type WeekStartsOnType,
 } from "./date";
 export { type EntryConfig, Entry } from "./entry";
+export { CalendarEngine } from "./engine";
