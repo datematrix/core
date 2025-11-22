@@ -583,22 +583,47 @@ export class DateTime {
     return DateTime.fromTZ(newBase, this._tz);
   }
 
-  weekRange(weekStartsOn: WeekStartsOnType): DateTimeRange {
-    const startOfWeek = this.startOf(DATETIME_UNIT.WEEK, weekStartsOn);
-    const endOfWeek = this.endOf(DATETIME_UNIT.WEEK, weekStartsOn);
-    return new DateTimeRange(startOfWeek, endOfWeek);
-  }
+  range(unit: typeof DATETIME_UNIT.DAYS): DateTimeRange;
+  range(
+    unit: typeof DATETIME_UNIT.WEEK,
+    weekStartsOn: WeekStartsOnType
+  ): DateTimeRange;
+  range(
+    unit: typeof DATETIME_UNIT.MONTH,
+    weekStartsOn: WeekStartsOnType
+  ): DateTimeRange;
+  range(
+    unit:
+      | typeof DATETIME_UNIT.DAYS
+      | typeof DATETIME_UNIT.WEEK
+      | typeof DATETIME_UNIT.MONTH,
+    weekStartsOn?: WeekStartsOnType
+  ): DateTimeRange {
+    if (unit === DATETIME_UNIT.DAYS) {
+      const startDate = this.startOf(unit);
+      const endDate = this.endOf(unit);
 
-  monthMatrix(weekStartsOn: WeekStartsOnType): Array<DateTimeRange> {
-    const matrix: Array<DateTimeRange> = [];
+      return new DateTimeRange(startDate, endDate);
+    }
+    if (weekStartsOn === undefined) throw Error("Not Implemented");
 
-    let d = this.startOf(DATETIME_UNIT.MONTH);
-    for (let index = 0; index < 6; index++) {
-      matrix.push(d.weekRange(weekStartsOn));
-      d = d.add(1, DATETIME_UNIT.WEEK);
+    if (unit === DATETIME_UNIT.WEEK) {
+      const startOfWeek = this.startOf(DATETIME_UNIT.WEEK, weekStartsOn);
+      const endOfWeek = this.endOf(DATETIME_UNIT.WEEK, weekStartsOn);
+
+      return new DateTimeRange(startOfWeek, endOfWeek);
     }
 
-    return matrix;
+    const startOfMonth = this.startOf(DATETIME_UNIT.MONTH).startOf(
+      DATETIME_UNIT.WEEK,
+      weekStartsOn
+    );
+    const endOfMonth = this.endOf(DATETIME_UNIT.MONTH).endOf(
+      DATETIME_UNIT.WEEK,
+      weekStartsOn
+    );
+
+    return new DateTimeRange(startOfMonth, endOfMonth);
   }
 }
 
