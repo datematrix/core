@@ -1,8 +1,31 @@
 import { DateTime } from "./date";
 
-type EntryPriority = 0 | 1 | 2 | 3;
-type EntryType = "TASK" | "EVENT" | "SLOT";
-type EntryStatus = "Default" | "Deleted";
+export const ENTRY_PRIORITY = {
+  P0: 0,
+  P1: 1,
+  P2: 2,
+  P3: 3,
+  P4: 4,
+  P5: 5,
+} as const;
+
+export const ENTRY_TYPE = {
+  TASK: "task",
+  EVENT: "event",
+  SLOT: "slot",
+} as const;
+
+export const ENTRY_STATUS = {
+  DEFAULT: "default",
+  DELETED: "deleted",
+} as const;
+
+export type EntryPriority =
+  (typeof ENTRY_PRIORITY)[keyof typeof ENTRY_PRIORITY];
+
+export type EntryType = (typeof ENTRY_TYPE)[keyof typeof ENTRY_TYPE];
+
+export type EntryStatus = (typeof ENTRY_STATUS)[keyof typeof ENTRY_STATUS];
 
 export interface EntryConfig {
   id: string;
@@ -40,6 +63,13 @@ export class Entry {
    */
   update(config: Partial<EntryConfig>) {
     return new Entry({ ...this._config, ...config });
+  }
+
+  /**
+   * Entry 정보를 JSON으로 반환합니다.
+   */
+  toJSON() {
+    return this._config;
   }
 
   /**

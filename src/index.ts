@@ -6,5 +6,14 @@ export {
   type DateTimeUnit,
   type WeekStartsOnType,
 } from "./date";
-export { type EntryConfig, Entry } from "./entry";
+export {
+  type EntryConfig,
+  Entry,
+  ENTRY_PRIORITY,
+  ENTRY_STATUS,
+  ENTRY_TYPE,
+  type EntryPriority,
+  type EntryStatus,
+  type EntryType,
+} from "./entry";
 export { CalendarEngine } from "./engine";
