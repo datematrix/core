@@ -632,7 +632,7 @@ export class DateTime {
    *
    */
   toDate() {
-    return new Date(this._view.getTime());
+    return new Date(this._base.getTime());
   }
 
   /**
