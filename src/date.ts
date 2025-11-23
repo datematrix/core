@@ -2,6 +2,8 @@
  * DateTime에서 사용하는 시간 단위.
  */
 
+import { formatDate } from "./formatter";
+
 export const DATETIME_UNIT = {
   MINUTES: "minutes",
   HOURS: "hours",
@@ -349,17 +351,6 @@ export class DateTime {
   }
 
   /**
-   * DateTime 객체를 ISO8601 문자열로 변경하는 기능을 제공합니다.
-   */
-  format(includeTime: boolean = false): string {
-    return new Intl.DateTimeFormat("sv-SE", {
-      dateStyle: "short",
-      timeStyle: includeTime ? "medium" : undefined,
-      timeZone: "UTC",
-    }).format(this._view.getTime());
-  }
-
-  /**
    * DateTime 간의 차이를 계산하는 기능을 제공합니다.
    * @param datetime - 비교 대상이 될 DateTime 객체
    * @param unit - 시간 단위
@@ -403,7 +394,7 @@ export class DateTime {
       dateStyle: "short",
       timeZone: this._tz,
     }).format(time);
-    const baseISO = this.format();
+    const baseISO = this.toISO();
     return baseISO === nowISO;
   }
 
@@ -624,6 +615,31 @@ export class DateTime {
     );
 
     return new DateTimeRange(startOfMonth, endOfMonth);
+  }
+
+  /**
+   * DateTime 객체를 ISO8601 문자열로 변경하는 기능을 제공합니다.
+   */
+  toISO(includeTime: boolean = false): string {
+    return new Intl.DateTimeFormat("sv-SE", {
+      dateStyle: "short",
+      timeStyle: includeTime ? "medium" : undefined,
+      timeZone: "UTC",
+    }).format(this._view.getTime());
+  }
+
+  /**
+   *
+   */
+  toDate() {
+    return new Date(this._view.getTime());
+  }
+
+  /**
+   *
+   */
+  format(template: string) {
+    return formatDate(this, template, this._tz);
   }
 }
 
