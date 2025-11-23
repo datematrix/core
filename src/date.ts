@@ -639,7 +639,7 @@ export class DateTime {
    *
    */
   format(template: string) {
-    return formatDate(this, template, this._tz);
+    return formatDate(this, template, "en-US");
   }
 }
 
