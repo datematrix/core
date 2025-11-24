@@ -16,4 +16,4 @@ export {
   type EntryStatus,
   type EntryType,
 } from "./entry";
-export { CalendarEngine } from "./engine";
+export { CalendarEngine, type IndexedEntry } from "./engine";

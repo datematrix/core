@@ -1,7 +1,7 @@
 import { DateTime, DateTimeRange } from "./date";
 import { type EntryConfig } from "./entry";
 
-interface IndexedEntry {
+export interface IndexedEntry {
   id: string;
   startDate?: DateTime;
   endDate?: DateTime;
