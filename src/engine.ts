@@ -1,7 +1,7 @@
 import { DateTime, DateTimeRange } from "./date";
-import { Entry, type EntryConfig } from "./entry";
+import { type EntryConfig } from "./entry";
 
-interface CompactEntry {
+interface IndexedEntry {
   id: string;
   startDate?: DateTime;
   endDate?: DateTime;
@@ -9,46 +9,23 @@ interface CompactEntry {
 }
 
 export class CalendarEngine {
-  state: Array<CompactEntry>;
+  state: Array<IndexedEntry>;
 
   constructor() {
     this.state = [];
   }
 
-  search(
-    idOrDateTimeOrRange: EntryConfig["id"] | DateTime | DateTimeRange
-  ): Array<string> {
-    if (typeof idOrDateTimeOrRange === "string") {
-      const e = this.state.find((entry) => {
-        return entry.id === idOrDateTimeOrRange;
-      });
-      return e ? [e.id] : [];
-    }
-
-    if (idOrDateTimeOrRange instanceof DateTime) {
-      return this.state
-        .filter((entry) => {
-          if (!entry.startDate) return false;
-          if (!entry.endDate)
-            return entry.startDate.isEqual(idOrDateTimeOrRange);
-
-          return idOrDateTimeOrRange.isBetween(
-            new DateTimeRange(entry.startDate, entry.endDate)
-          );
-        })
-        .map((entry) => entry.id);
-    }
-
+  search(range: DateTimeRange): Array<IndexedEntry> {
     return this.state
       .filter((entry) => {
         if (!entry.startDate) return false;
 
         if (entry.startDate && !entry.endDate)
-          return entry.startDate.isBetween(idOrDateTimeOrRange);
+          return entry.startDate.isBetween(range);
 
         if (entry.startDate && entry.endDate) {
           const entryRange = new DateTimeRange(entry.startDate, entry.endDate);
-          return entryRange.isOverlap(idOrDateTimeOrRange);
+          return entryRange.isOverlap(range);
         }
 
         throw Error("Not Implemented");
@@ -64,8 +41,7 @@ export class CalendarEngine {
         if (!a.endDate && b.endDate) return 1;
 
         return b.endDate!.getTime() - a.endDate!.getTime();
-      })
-      .map((entry) => entry.id);
+      });
   }
 
   delete(id: EntryConfig["id"]) {
@@ -77,9 +53,12 @@ export class CalendarEngine {
     this.state = this.state.concat({ id, startDate, endDate, allDay });
   }
 
-  update(newEntry: Entry) {
+  update(
+    id: EntryConfig["id"],
+    patch: Pick<Partial<EntryConfig>, "startDate" | "endDate" | "allDay">
+  ) {
     this.state = this.state.map((entry) =>
-      entry.id === newEntry.id ? newEntry : entry
+      entry.id === id ? { ...entry, ...patch } : entry
     );
   }
 }
