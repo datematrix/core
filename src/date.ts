@@ -690,9 +690,12 @@ export class DateTimeRange {
    */
   toMatrix(): DateTimeRange[] {
     const dayOfWeek = this._start.getDayOfWeek() as WeekStartsOnType;
-    return Array.from({ length: 6 }, () =>
-      this._start.range(DATETIME_UNIT.WEEK, dayOfWeek)
-    );
+    let date = this._start;
+    return Array.from({ length: 6 }, () => {
+      const week = date.range(DATETIME_UNIT.WEEK, dayOfWeek);
+      date = date.add(1, DATETIME_UNIT.WEEK);
+      return week;
+    });
   }
 
   /**
