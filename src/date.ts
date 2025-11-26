@@ -86,7 +86,7 @@ export class BaseDate {
    * @param datetime - 비교 대상이 될 BaseDate 객체
    * @param unit - 시간 단위
    */
-  diff(datetime: BaseDate, unit: Exclude<DateTimeUnit, "week">): number {
+  diff(datetime: BaseDate, unit: DateTimeUnit): number {
     if (unit === DATETIME_UNIT.YEAR) {
       return datetime.year - this.year;
     }
@@ -94,6 +94,10 @@ export class BaseDate {
     if (unit === DATETIME_UNIT.MONTH) {
       const yearDiff = this.year - datetime.year;
       return datetime.month - (12 * yearDiff + this.month);
+    }
+
+    if (unit === DATETIME_UNIT.WEEK) {
+      return Math.floor((datetime._ms - this._ms) / (7 * 24 * 60 * 60 * 1000));
     }
 
     if (unit === DATETIME_UNIT.DAYS) {
@@ -355,10 +359,7 @@ export class DateTime {
    * @param datetime - 비교 대상이 될 DateTime 객체
    * @param unit - 시간 단위
    */
-  diff(
-    datetime: DateTime,
-    unit: Exclude<DateTimeUnit, "week"> = DATETIME_UNIT.DAYS
-  ): number {
+  diff(datetime: DateTime, unit: DateTimeUnit = DATETIME_UNIT.DAYS): number {
     return this._base.diff(datetime._base, unit);
   }
 
@@ -646,7 +647,6 @@ export class DateTime {
 export class DateTimeRange {
   private _start: DateTime;
   private _end: DateTime;
-  private _dates: DateTime[] = [];
 
   /**
    *
@@ -676,16 +676,23 @@ export class DateTimeRange {
   }
 
   /**
-   * 구간 사이의 모든 날짜
+   * 구간 사이의 모든 날짜를 DateTime Array로 반환한다.
    */
-  getDateTimes(): DateTime[] {
-    if (this._dates.length === 0) {
-      const diff = this._start.diff(this._end, DATETIME_UNIT.DAYS);
-      this._dates = Array.from({ length: diff + 1 }, (_, i) =>
-        this._start.add(i, DATETIME_UNIT.DAYS)
-      );
-    }
-    return this._dates;
+  toArray(): DateTime[] {
+    const diff = this._start.diff(this._end, DATETIME_UNIT.DAYS);
+    return Array.from({ length: diff + 1 }, (_, i) =>
+      this._start.add(i, DATETIME_UNIT.DAYS)
+    );
+  }
+
+  /**
+   * 구간 사이의 모든 Week를 DateTimeRange Array로 반환한다.
+   */
+  toMatrix(): DateTimeRange[] {
+    const dayOfWeek = this._start.getDayOfWeek() as WeekStartsOnType;
+    return Array.from({ length: 6 }, () =>
+      this._start.range(DATETIME_UNIT.WEEK, dayOfWeek)
+    );
   }
 
   /**
