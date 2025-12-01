@@ -1,4 +1,4 @@
-import { DateTime, WEEK_STARTS_ON, type DateTimeRange } from "./date";
+import { type DateTimeRange } from "./date";
 import type { IndexedEntry } from "./engine";
 
 export interface LayoutState {
@@ -6,18 +6,6 @@ export interface LayoutState {
   startPos: number;
   spanLength: number;
   stackLevel: number;
-}
-
-function adjustDay(day: number, weekStartDate: DateTime) {
-  if (weekStartDate.getDayOfWeek() === WEEK_STARTS_ON.MON) {
-    if (day === 0) {
-      day = 6;
-    } else {
-      day -= 1;
-    }
-  }
-
-  return day;
 }
 
 export class CalendarLayoutEngine {
@@ -40,10 +28,10 @@ export class CalendarLayoutEngine {
     for (const span of sorted) {
       let level = 0;
       let startPos = range.startDate.diff(span.startDate!);
+
       let spanLength = Math.min(
         span.startDate!.diff(span.endDate!) + 1,
-        range.toArray().length -
-          adjustDay(span.startDate!.getDayOfWeek(), range.startDate)
+        span.startDate!.diff(range.endDate) + 1
       );
 
       while (
