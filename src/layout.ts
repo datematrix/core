@@ -24,15 +24,24 @@ export class CalendarLayoutEngine {
 
     const state = new Map<string, LayoutState>();
     const lastEndOfLevel: Array<number> = [];
+    const rangeLength = range.toArray().length;
 
     for (const span of sorted) {
       let level = 0;
       let startPos = range.startDate.diff(span.startDate!);
+      let spanLength = 0;
 
-      let spanLength = Math.min(
-        span.startDate!.diff(span.endDate!) + 1,
-        range.startDate.diff(range.endDate) + 1
-      );
+      if (span.startDate!.isBefore(range.startDate)) {
+        spanLength = Math.min(
+          range.startDate.diff(span.endDate!) + 1,
+          rangeLength
+        );
+      } else {
+        spanLength = Math.min(
+          span.startDate!.diff(span.endDate!) + 1,
+          rangeLength
+        );
+      }
 
       while (
         level < lastEndOfLevel.length &&
