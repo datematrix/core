@@ -17,3 +17,4 @@ export {
   type EntryType,
 } from "./entry";
 export { CalendarEngine, type IndexedEntry } from "./engine";
+export { CalendarLayoutEngine } from "./layout";
