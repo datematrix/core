@@ -29,7 +29,7 @@ export class CalendarLayoutEngine {
       let level = 0;
       let startPos = range.startDate.diff(span.startDate!);
       let spanLength = Math.min(
-        span.startDate!.diff(span.endDate!),
+        span.startDate!.diff(span.endDate!) + 1,
         range.toArray().length
       );
 
