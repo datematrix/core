@@ -1,10 +1,10 @@
 import { type DateTimeRange } from "./date";
 import type { IndexedEntry } from "./engine";
 
-interface LayoutState {
+export interface LayoutState {
   id: string;
   startPos: number;
-  endPos: number;
+  spanLength: number;
   stackLevel: number;
 }
 
@@ -33,7 +33,10 @@ export class CalendarLayoutEngine {
     for (const span of sorted) {
       let level = 0;
       let startPos = range.startDate.diff(span.startDate!);
-      let endPos = Math.min(range.startDate.diff(span.endDate!), 6);
+      let spanLength = Math.min(
+        range.startDate.diff(span.endDate!),
+        range.toArray().length
+      );
 
       while (
         level < lastEndOfLevel.length &&
@@ -43,25 +46,21 @@ export class CalendarLayoutEngine {
       }
 
       if (level === lastEndOfLevel.length) {
-        lastEndOfLevel.push(endPos);
+        lastEndOfLevel.push(spanLength);
       } else {
-        lastEndOfLevel[level] = endPos;
+        lastEndOfLevel[level] = spanLength;
       }
 
       this.state.set(span.id, {
         id: span.id,
         startPos,
-        endPos,
+        spanLength,
         stackLevel: level,
       });
     }
   }
 
-  getLayout(id: string): LayoutState {
-    const layout = this.state.get(id);
-
-    if (!layout) throw new Error("Layout does not found");
-
-    return layout;
+  getLayout(id: string) {
+    return this.state.get(id);
   }
 }
