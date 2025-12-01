@@ -1,6 +1,6 @@
 {
   "name": "@datematrix/core",
-  "version": "0.0.25",
+  "version": "0.0.26",
   "description": "Calendar state data structures for the DateMatrix Calendar",
   "keywords": [
     "calendar",
