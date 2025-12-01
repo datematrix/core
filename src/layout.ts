@@ -9,12 +9,6 @@ export interface LayoutState {
 }
 
 export class CalendarLayoutEngine {
-  state: Map<string, LayoutState>;
-
-  constructor() {
-    this.state = new Map();
-  }
-
   private sortEntries<T extends IndexedEntry>(entries: T[]) {
     return [...entries].sort((a, b) => {
       if (a.startDate!.getTime() === b.startDate!.getTime()) {
@@ -28,6 +22,7 @@ export class CalendarLayoutEngine {
   compute<T extends IndexedEntry>(entries: T[], range: DateTimeRange) {
     const sorted = this.sortEntries(entries);
 
+    const state = new Map<string, LayoutState>();
     const lastEndOfLevel: Array<number> = [];
 
     for (const span of sorted) {
@@ -51,16 +46,14 @@ export class CalendarLayoutEngine {
         lastEndOfLevel[level] = spanLength;
       }
 
-      this.state.set(span.id, {
+      state.set(span.id, {
         id: span.id,
         startPos,
         spanLength,
         stackLevel: level,
       });
     }
-  }
 
-  getLayout(id: string) {
-    return this.state.get(id);
+    return state;
   }
 }
