@@ -31,7 +31,7 @@ export class CalendarLayoutEngine {
 
       let spanLength = Math.min(
         span.startDate!.diff(span.endDate!) + 1,
-        span.startDate!.diff(range.endDate) + 1
+        range.startDate.diff(range.endDate) + 1
       );
 
       while (
@@ -49,7 +49,7 @@ export class CalendarLayoutEngine {
 
       state.set(span.id, {
         id: span.id,
-        startPos,
+        startPos: Math.max(startPos, 0),
         spanLength,
         stackLevel: level,
       });
