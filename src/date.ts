@@ -1,13 +1,15 @@
+import dayjs from "./dayjs";
+import type { Dayjs } from "dayjs";
+
 /**
  * DateTime에서 사용하는 시간 단위.
  */
 
-import { formatDate } from "./formatter";
-
 export const DATETIME_UNIT = {
-  MINUTES: "minutes",
-  HOURS: "hours",
-  DAYS: "days",
+  MINUTE: "minute",
+  HOUR: "hour",
+  DATE: "date",
+  DAY: "day",
   WEEK: "week",
   MONTH: "month",
   YEAR: "year",
@@ -40,45 +42,16 @@ function validateISO(iso: string): [number, number, number, number, number] {
   return [+year!, +month! - 1, +date!, +hours!, +minutes!];
 }
 
-/**
- * dayjs와 Built-in Date 객체를 Wrapping한 클래스
- */
 export class BaseDate {
-  /**
-   * Milliseconds since epoch
-   */
-  private readonly _ms: number;
-  readonly year: number;
-  readonly month: number;
-  readonly date: number;
-  readonly hours: number;
-  readonly minutes: number;
-  readonly day: number;
+  private readonly d: Dayjs;
 
   constructor(ms: number) {
-    // ! milliseconds값이 UTC 기준으로 들어온다고 가정한다.
-    this._ms = ms;
-    const date = new Date(ms);
-    this.year = date.getUTCFullYear();
-    this.month = date.getUTCMonth();
-    this.date = date.getUTCDate();
-    this.hours = date.getUTCHours();
-    this.minutes = date.getUTCMinutes();
-    this.day = date.getUTCDay();
-  }
-
-  toJSON() {
-    return {
-      year: this.year,
-      month: this.month,
-      date: this.date,
-      hours: this.hours,
-      minutes: this.minutes,
-    };
+    // ! milliseconds값은 로컬 기준으로 들어온다고 가정하며, 반드시 utc로 변환된다.
+    this.d = dayjs(ms).utc();
   }
 
   getTime() {
-    return this._ms;
+    return this.d.valueOf();
   }
 
   /**
@@ -86,33 +59,11 @@ export class BaseDate {
    * @param datetime - 비교 대상이 될 BaseDate 객체
    * @param unit - 시간 단위
    */
-  diff(datetime: BaseDate, unit: DateTimeUnit): number {
-    if (unit === DATETIME_UNIT.YEAR) {
-      return datetime.year - this.year;
-    }
-
-    if (unit === DATETIME_UNIT.MONTH) {
-      const yearDiff = this.year - datetime.year;
-      return datetime.month - (12 * yearDiff + this.month);
-    }
-
-    if (unit === DATETIME_UNIT.WEEK) {
-      return Math.floor((datetime._ms - this._ms) / (7 * 24 * 60 * 60 * 1000));
-    }
-
-    if (unit === DATETIME_UNIT.DAYS) {
-      return Math.floor((datetime._ms - this._ms) / (24 * 60 * 60 * 1000));
-    }
-
-    if (unit === DATETIME_UNIT.HOURS) {
-      return Math.floor((datetime._ms - this._ms) / (60 * 60 * 1000));
-    }
-
-    if (unit === DATETIME_UNIT.MINUTES) {
-      return Math.floor((datetime._ms - this._ms) / (60 * 1000));
-    }
-
-    throw Error("NotImplemented");
+  diff(
+    base: BaseDate,
+    unit: Exclude<DateTimeUnit, "date"> = DATETIME_UNIT.DAY
+  ) {
+    return this.d.diff(base.d, unit);
   }
 
   /**
@@ -121,41 +72,13 @@ export class BaseDate {
    * @param unit - 변경하려는 시간 단위
    * @returns
    */
-  set(value: number, unit: Exclude<DateTimeUnit, "week">): BaseDate {
-    let utc = 0;
-    switch (unit) {
-      case DATETIME_UNIT.YEAR:
-        utc = Date.UTC(value, this.month, this.date, this.hours, this.minutes);
-        break;
+  set(value: number, unit: Exclude<DateTimeUnit, "week">) {
+    const d = this.d.set(unit, value);
+    return new BaseDate(d.valueOf());
+  }
 
-      case DATETIME_UNIT.MONTH:
-        utc = Date.UTC(this.year, value, this.date, this.hours, this.minutes);
-        break;
-
-      case DATETIME_UNIT.DAYS:
-        utc = Date.UTC(this.year, this.month, value, this.hours, this.minutes);
-        break;
-
-      case DATETIME_UNIT.HOURS:
-        utc = Date.UTC(this.year, this.month, this.date, value, this.minutes);
-        break;
-
-      case DATETIME_UNIT.MINUTES:
-        utc = Date.UTC(this.year, this.month, this.date, this.hours, value);
-        break;
-
-      default:
-        utc = Date.UTC(
-          this.year,
-          this.month,
-          this.date,
-          this.hours,
-          this.minutes
-        );
-        break;
-    }
-
-    return new BaseDate(utc);
+  get(unit: Exclude<DateTimeUnit, "week">) {
+    return this.d.get(unit);
   }
 
   /**
@@ -163,59 +86,20 @@ export class BaseDate {
    * @param value - 변경하고 싶은 정도
    * @param unit - 변경하려는 시간 단위
    */
-  add(value: number, unit: DateTimeUnit): BaseDate {
-    const MINUTES = 60 * 1000;
-    if (unit === DATETIME_UNIT.MINUTES) {
-      return new BaseDate(this._ms + value * MINUTES);
-    }
-
-    const HOURS = 60 * MINUTES;
-    if (unit === DATETIME_UNIT.HOURS) {
-      return new BaseDate(this._ms + value * HOURS);
-    }
-
-    const DATE = 24 * HOURS;
-    if (unit === DATETIME_UNIT.DAYS) {
-      return new BaseDate(this._ms + value * DATE);
-    }
-
-    const WEEK = 7 * DATE;
-    if (unit === DATETIME_UNIT.WEEK) {
-      return new BaseDate(this._ms + value * WEEK);
-    }
-
-    const lastDayOfNextMonth = new Date(
-      Date.UTC(this.year, this.month + 2, 0)
-    ).getUTCDate();
-    const lastDayOfMonth = new Date(
-      Date.UTC(this.year, this.month + 1, 0)
-    ).getUTCDate();
-
-    let factor = 1;
-
-    if (this.date > lastDayOfNextMonth) {
-      factor = lastDayOfMonth - this.date + lastDayOfNextMonth;
-    } else {
-      factor = lastDayOfMonth;
-    }
-
-    const MONTH = factor * DATE;
-    if (unit === DATETIME_UNIT.MONTH) {
-      return new BaseDate(this._ms + value * MONTH);
-    }
-
-    throw Error("NotImplemented");
-
-    const YEAR = 1 * DATE;
-    return new BaseDate(this._ms + value * YEAR);
+  add(value: number, unit: Exclude<DateTimeUnit, "date">) {
+    const d = this.d.add(value, unit);
+    return new BaseDate(d.valueOf());
   }
 
   /**
    * 두 BaseDate가 같은지 계산하는 기능을 제공합니다.
    * @param datetime - 비교 대상이 될 UTCBaseDate 객체
    */
-  isEqual(datetime: BaseDate): boolean {
-    return this._ms === datetime._ms;
+  isEqual(
+    datetime: BaseDate,
+    unit: Exclude<DateTimeUnit, "week" | "day"> = DATETIME_UNIT.MINUTE
+  ): boolean {
+    return this.d.isSame(datetime.d, unit);
   }
 
   /**
@@ -223,7 +107,7 @@ export class BaseDate {
    * @param datetime - 비교 대상이 될 BaseDate 객체
    */
   isBefore(datetime: BaseDate): boolean {
-    return this._ms < datetime._ms;
+    return this.d.isBefore(datetime.d, DATETIME_UNIT.MINUTE);
   }
 
   /**
@@ -239,7 +123,7 @@ export class BaseDate {
    * @param datetime - 비교 대상이 될 BaseDate 객체
    */
   isAfter(datetime: BaseDate): boolean {
-    return this._ms > datetime._ms;
+    return this.d.isAfter(datetime.d, DATETIME_UNIT.MINUTE);
   }
 
   /**
@@ -251,11 +135,28 @@ export class BaseDate {
   }
 
   /**
-   * BaseDate 인스턴스가 인자로 받은 BaseDate과 같은 연월인지 계산하는 기능을 제공합니다.
-   * @param datetime - 비교 대상이 될 BaseDate 객체
+   * BaseDate 인스턴스가 오늘 날짜인지 계산하는 기능을 제공합니다.
    */
-  isSameMonth(datetime: BaseDate): boolean {
-    return this.year === datetime.year && this.month === datetime.month;
+  isToday(): boolean {
+    return this.d.isToday();
+  }
+
+  startOf(unit: Exclude<DateTimeUnit, "date">) {
+    const d = this.d.startOf(unit);
+    return new BaseDate(d.valueOf());
+  }
+
+  endOf(unit: Exclude<DateTimeUnit, "date">) {
+    const d = this.d.endOf(unit);
+    return new BaseDate(d.valueOf());
+  }
+
+  format(template: string) {
+    return this.d.format(template);
+  }
+
+  toISOString() {
+    return this.d.format("YYYY-MM-DD[T]HH:mm:ssZZ[Z]");
   }
 }
 
@@ -263,95 +164,65 @@ export class DateTime {
   private readonly _base: BaseDate;
   private readonly _view: BaseDate;
   private readonly _tz: string;
-  private readonly _tzOffset: number;
+  private readonly _timezoneOffset: number; // Minutes
 
-  constructor(msOrDate: number | BaseDate, tz?: string) {
-    let ms = 0;
-    if (typeof msOrDate === "number") {
-      ms = truncateTime(msOrDate);
-      this._base = new BaseDate(ms);
-    } else if (msOrDate instanceof BaseDate) {
-      this._base = msOrDate;
-      ms = msOrDate.getTime();
-    } else {
-      throw Error("Not Implemented");
-    }
-    const resolvedDateTimeFormatOptions =
-      new Intl.DateTimeFormat().resolvedOptions();
+  constructor(ms: number, tz?: string) {
+    // ! milliseconds값은 로컬 기준으로 들어온다고 가정한다. (keepLocalTime=true인 경우, UTC로 들어온다고 가정)
+    let _ms = truncateTime(ms);
+    this._tz = tz ?? dayjs.tz.guess();
+    this._timezoneOffset = DateTime.getTimezoneOffset(this._tz);
 
-    // this._locale = resolvedDateTimeFormatOptions.locale;
-    this._tz = tz ?? resolvedDateTimeFormatOptions.timeZone;
-
-    this._tzOffset = DateTime.getTimezoneOffset(tz);
-    this._view = new BaseDate(ms + this._tzOffset * 60 * 60 * 1000);
+    this._base = new BaseDate(_ms);
+    this._view = this._base.add(this._timezoneOffset, DATETIME_UNIT.MINUTE);
   }
 
   static getTimezoneOffset(timeZone?: string) {
-    const formattedDate = new Intl.DateTimeFormat("sv-SE", {
-      timeZoneName: "shortOffset",
-      timeZone,
-    }).format(new Date());
-
-    return +formattedDate.split("GMT")[1]!;
+    const nowInZone = dayjs().tz(timeZone);
+    const offsetMinutes = nowInZone.utcOffset();
+    return offsetMinutes;
   }
 
-  static fromUTC(utcString: string, tz?: string): DateTime {
-    const [year, month, date, hours, minutes] = validateISO(utcString);
-    const epochMs = Date.UTC(year, month, date, hours, minutes);
-    return new DateTime(epochMs, tz);
+  static now(tz?: string) {
+    const now = dayjs();
+    return new DateTime(now.valueOf(), tz);
   }
 
-  static fromTZ(tzTime: number | BaseDate, tz?: string): DateTime {
-    const timeZoneOffset = DateTime.getTimezoneOffset(tz);
-    if (typeof tzTime === "number") {
-      const newBase = tzTime - timeZoneOffset * 60 * 60 * 1000;
-      return new DateTime(newBase, tz);
+  static fromDate(date: Date, tz?: string) {
+    return new DateTime(date.getTime(), tz);
+  }
+
+  static fromUTC(isoOrBaseDate: string | BaseDate, tz?: string): DateTime {
+    if (typeof isoOrBaseDate === "string") {
+      const [year, month, date, hours, minutes] = validateISO(isoOrBaseDate);
+      const epochMs = Date.UTC(year, month, date, hours, minutes);
+      return new DateTime(epochMs, tz);
     }
 
-    if (tzTime instanceof BaseDate) {
-      const newBase = tzTime.add(-timeZoneOffset, DATETIME_UNIT.HOURS);
-      return new DateTime(newBase, tz);
-    }
-
-    throw Error("NotImplemented");
+    return new DateTime(isoOrBaseDate.getTime(), tz);
   }
 
-  static now(tz?: string): DateTime {
-    const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60 * 1000;
-    return new DateTime(utc, tz);
+  static fromLocal(base: BaseDate, tz?: string): DateTime {
+    return new DateTime(base.getTime(), tz);
   }
 
-  /**
-   * 요일을 반환합니다. 0은 일요일, 6은 토요일입니다.
-   */
   getDayOfWeek() {
-    return this._view.day;
+    return this._view.get(DATETIME_UNIT.DAY);
   }
 
-  /**
-   * 시(hour)를 반환합니다. 0~23를 반환합니다.
-   */
-  getHours() {
-    return this._view.hours;
-  }
-
-  /**
-   * 분(minute)를 반환합니다. 0~59를 반환합니다.
-   */
-  getMinutes() {
-    return this._view.minutes;
-  }
-
-  /**
-   * 월(Month)의 일을 반환합니다.
-   */
   getDateOfMonth() {
-    return this._view.date;
+    return this._view.get(DATETIME_UNIT.DATE);
+  }
+
+  getHours() {
+    return this._view.get(DATETIME_UNIT.HOUR);
+  }
+
+  getMinutes() {
+    return this._view.get(DATETIME_UNIT.MINUTE);
   }
 
   getTime() {
-    return this._view.getTime();
+    return this._base.getTime();
   }
 
   /**
@@ -359,7 +230,10 @@ export class DateTime {
    * @param datetime - 비교 대상이 될 DateTime 객체
    * @param unit - 시간 단위
    */
-  diff(datetime: DateTime, unit: DateTimeUnit = DATETIME_UNIT.DAYS): number {
+  diff(
+    datetime: DateTime,
+    unit: Exclude<DateTimeUnit, "date"> = DATETIME_UNIT.DAY
+  ): number {
     return this._base.diff(datetime._base, unit);
   }
 
@@ -370,9 +244,10 @@ export class DateTime {
    */
   setTime(hours: number, minutes: number): DateTime {
     const newBase = this._view
-      .set(hours, DATETIME_UNIT.HOURS)
-      .set(minutes, DATETIME_UNIT.MINUTES);
-    return DateTime.fromTZ(newBase, this._tz);
+      .set(hours, DATETIME_UNIT.HOUR)
+      .set(minutes, DATETIME_UNIT.MINUTE);
+
+    return DateTime.fromLocal(newBase, this._tz);
   }
 
   /**
@@ -380,31 +255,27 @@ export class DateTime {
    * @param value - 변경하고 싶은 정도
    * @param unit - 변경하려는 시간 단위
    */
-  add(value: number, unit: DateTimeUnit): DateTime {
+  add(value: number, unit: Exclude<DateTimeUnit, "date">): DateTime {
     const newBase = this._base.add(value, unit);
-    return new DateTime(newBase, this._tz);
+    return DateTime.fromUTC(newBase, this._tz);
   }
 
   /**
    * DateTime 인스턴스가 오늘 날짜인지 계산하는 기능을 제공합니다.
    */
   isToday(): boolean {
-    const now = DateTime.now();
-    const time = now.getTime();
-    const nowISO = new Intl.DateTimeFormat("sv-SE", {
-      dateStyle: "short",
-      timeZone: this._tz,
-    }).format(time);
-    const baseISO = this.toISO();
-    return baseISO === nowISO;
+    return this._view.isToday();
   }
 
   /**
    * 두 DateTime가 같은지 계산하는 기능을 제공합니다.
    * @param datetime - 비교 대상이 될 DateTime 객체
    */
-  isEqual(datetime: DateTime): boolean {
-    return this._base.isEqual(datetime._base);
+  isEqual(
+    datetime: DateTime,
+    unit: Exclude<DateTimeUnit, "week" | "day"> = DATETIME_UNIT.MINUTE
+  ): boolean {
+    return this._base.isEqual(datetime._base, unit);
   }
 
   /**
@@ -441,10 +312,10 @@ export class DateTime {
 
   /**
    * DateTime 인스턴스가 특정 구간 사이에 있는 날짜인지 계산하는 기능을 제공합니다.
-   * @param {DateTimeRange} range - 특정 구간
+   * @param {Duration} range - 특정 구간
    * @param {boolean} [includeBounds] - 구간의 시작과 끝 날짜와 일치하는 경우 포함할지 여부. false인 경우, 구간의 시작과 끝 날짜와 일치하는 경우는 포함하지 않습니다.
    */
-  isBetween(range: DateTimeRange, includeBounds?: boolean): boolean;
+  isBetween(range: Duration, includeBounds?: boolean): boolean;
   /**
    * DateTime 인스턴스가 특정 구간 사이에 있는 날짜인지 계산하는 기능을 제공합니다.
    * @param {DateTime} startDate - 시작 날짜
@@ -460,7 +331,7 @@ export class DateTime {
    * DateTime 인스턴스가 특정 구간 사이에 있는 날짜인지 계산하는 기능을 제공합니다.
    */
   isBetween(
-    startDateOrRange: DateTime | DateTimeRange,
+    startDateOrRange: DateTime | Duration,
     endDateOrIncludeBounds?: DateTime | boolean,
     includeBounds: boolean = true
   ): boolean {
@@ -468,7 +339,7 @@ export class DateTime {
     let endDate: DateTime | null = null;
     let _includeBounds: boolean = true;
 
-    if (startDateOrRange instanceof DateTimeRange) {
+    if (startDateOrRange instanceof Duration) {
       startDate = startDateOrRange.startDate;
       endDate = startDateOrRange.endDate;
       _includeBounds = (endDateOrIncludeBounds as boolean | undefined) ?? true;
@@ -484,16 +355,18 @@ export class DateTime {
     return this.isAfter(startDate) && this.isBefore(endDate);
   }
 
-  startOf(unit: Exclude<DateTimeUnit, "minutes" | "hours" | "week">): DateTime;
+  startOf(
+    unit: Exclude<DateTimeUnit, "week" | "hour" | "minute" | "date">
+  ): DateTime;
   startOf(
     unit: Extract<DateTimeUnit, "week">,
     weekStartsOn: WeekStartsOnType
   ): DateTime;
   startOf(
-    unit: Exclude<DateTimeUnit, "minutes" | "hours">,
+    unit: Exclude<DateTimeUnit, "date" | "hour" | "minute">,
     weekStartsOn?: WeekStartsOnType
   ): DateTime {
-    if (unit === DATETIME_UNIT.DAYS) {
+    if (unit === DATETIME_UNIT.DAY) {
       return this.setTime(0, 0);
     }
 
@@ -504,39 +377,31 @@ export class DateTime {
       }
       if (weekStartsOn === WEEK_STARTS_ON.MON) {
         dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        return this.add(-dayOfWeek, DATETIME_UNIT.DAYS).setTime(0, 0);
+        return this.add(-dayOfWeek, DATETIME_UNIT.DAY).setTime(0, 0);
       }
       if (weekStartsOn === WEEK_STARTS_ON.SUN) {
-        return this.add(-dayOfWeek, DATETIME_UNIT.DAYS).setTime(0, 0);
+        return this.add(-dayOfWeek, DATETIME_UNIT.DAY).setTime(0, 0);
       }
       throw Error("Not Implemented");
     }
 
-    if (unit === DATETIME_UNIT.MONTH) {
-      const newBase = this._view
-        .set(this._view.month, DATETIME_UNIT.MONTH)
-        .set(1, DATETIME_UNIT.DAYS)
-        .set(0, DATETIME_UNIT.HOURS)
-        .set(0, DATETIME_UNIT.MINUTES);
-      return DateTime.fromTZ(newBase, this._tz);
-    }
+    const d = this._view.startOf(unit);
 
-    const newBase = this._view
-      .set(this._view.year, DATETIME_UNIT.YEAR)
-      .set(0, DATETIME_UNIT.MONTH)
-      .set(1, DATETIME_UNIT.DAYS)
-      .set(0, DATETIME_UNIT.HOURS)
-      .set(0, DATETIME_UNIT.MINUTES);
-    return DateTime.fromTZ(newBase, this._tz);
+    return DateTime.fromLocal(d, this._tz);
   }
 
-  endOf(unit: Exclude<DateTimeUnit, "week">): DateTime;
+  endOf(
+    unit: Exclude<DateTimeUnit, "week" | "hour" | "minute" | "date">
+  ): DateTime;
   endOf(
     unit: Extract<DateTimeUnit, "week">,
     weekStartsOn: WeekStartsOnType
   ): DateTime;
-  endOf(unit: DateTimeUnit, weekStartsOn?: WeekStartsOnType): DateTime {
-    if (unit === DATETIME_UNIT.DAYS) {
+  endOf(
+    unit: Exclude<DateTimeUnit, "date" | "hour" | "minute">,
+    weekStartsOn?: WeekStartsOnType
+  ) {
+    if (unit === DATETIME_UNIT.DAY) {
       return this.setTime(23, 59);
     }
 
@@ -548,62 +413,50 @@ export class DateTime {
           return this.setTime(23, 59);
         }
         dayOfWeek = 7 - dayOfWeek;
-        return this.add(dayOfWeek, DATETIME_UNIT.DAYS).setTime(23, 59);
+        return this.add(dayOfWeek, DATETIME_UNIT.DAY).setTime(23, 59);
       }
       if (weekStartsOn === WEEK_STARTS_ON.SUN) {
         dayOfWeek = 6 - dayOfWeek;
-        return this.add(dayOfWeek, DATETIME_UNIT.DAYS).setTime(23, 59);
+        return this.add(dayOfWeek, DATETIME_UNIT.DAY).setTime(23, 59);
       }
       throw Error("Not Implemented");
     }
 
-    if (unit === DATETIME_UNIT.MONTH) {
-      const newBase = this._view
-        .set(this._view.month + 1, DATETIME_UNIT.MONTH)
-        .set(0, DATETIME_UNIT.DAYS)
-        .set(23, DATETIME_UNIT.HOURS)
-        .set(59, DATETIME_UNIT.MINUTES);
-      return DateTime.fromTZ(newBase, this._tz);
-    }
+    const d = this._view.endOf(unit);
 
-    const newBase = this._view
-      .set(this._view.year + 1, DATETIME_UNIT.YEAR)
-      .set(0, DATETIME_UNIT.MONTH)
-      .set(0, DATETIME_UNIT.DAYS)
-      .set(23, DATETIME_UNIT.HOURS)
-      .set(59, DATETIME_UNIT.MINUTES);
-    return DateTime.fromTZ(newBase, this._tz);
+    return DateTime.fromLocal(d, this._tz);
   }
 
-  range(unit: typeof DATETIME_UNIT.DAYS): DateTimeRange;
+  range(unit: typeof DATETIME_UNIT.DAY): Duration;
   range(
     unit: typeof DATETIME_UNIT.WEEK,
     weekStartsOn: WeekStartsOnType
-  ): DateTimeRange;
+  ): Duration;
   range(
     unit: typeof DATETIME_UNIT.MONTH,
     weekStartsOn: WeekStartsOnType
-  ): DateTimeRange;
+  ): Duration;
   range(
     unit:
-      | typeof DATETIME_UNIT.DAYS
+      | typeof DATETIME_UNIT.DAY
       | typeof DATETIME_UNIT.WEEK
       | typeof DATETIME_UNIT.MONTH,
     weekStartsOn?: WeekStartsOnType
-  ): DateTimeRange {
-    if (unit === DATETIME_UNIT.DAYS) {
+  ): Duration {
+    if (unit === DATETIME_UNIT.DAY) {
       const startDate = this.startOf(unit);
       const endDate = this.endOf(unit);
 
-      return new DateTimeRange(startDate, endDate);
+      return new Duration(startDate, endDate);
     }
+
     if (weekStartsOn === undefined) throw Error("Not Implemented");
 
     if (unit === DATETIME_UNIT.WEEK) {
       const startOfWeek = this.startOf(DATETIME_UNIT.WEEK, weekStartsOn);
       const endOfWeek = this.endOf(DATETIME_UNIT.WEEK, weekStartsOn);
 
-      return new DateTimeRange(startOfWeek, endOfWeek);
+      return new Duration(startOfWeek, endOfWeek);
     }
 
     const startOfMonth = this.startOf(DATETIME_UNIT.MONTH).startOf(
@@ -615,36 +468,19 @@ export class DateTime {
       weekStartsOn
     );
 
-    return new DateTimeRange(startOfMonth, endOfMonth);
+    return new Duration(startOfMonth, endOfMonth);
   }
 
-  /**
-   * DateTime 객체를 ISO8601 문자열로 변경하는 기능을 제공합니다.
-   */
-  toISO(includeTime: boolean = false): string {
-    return new Intl.DateTimeFormat("sv-SE", {
-      dateStyle: "short",
-      timeStyle: includeTime ? "medium" : undefined,
-      timeZone: "UTC",
-    }).format(this._view.getTime());
+  toISOString() {
+    return this._view.toISOString();
   }
 
-  /**
-   *
-   */
-  toDate() {
-    return new Date(this._base.getTime());
-  }
-
-  /**
-   *
-   */
   format(template: string) {
-    return formatDate(this, template, "en-US");
+    return this._view.format(template);
   }
 }
 
-export class DateTimeRange {
+export class Duration {
   private _start: DateTime;
   private _end: DateTime;
 
@@ -679,16 +515,16 @@ export class DateTimeRange {
    * 구간 사이의 모든 날짜를 DateTime Array로 반환한다.
    */
   toArray(): DateTime[] {
-    const diff = this._start.diff(this._end, DATETIME_UNIT.DAYS);
+    const diff = this._start.diff(this._end, DATETIME_UNIT.DAY);
     return Array.from({ length: diff + 1 }, (_, i) =>
-      this._start.add(i, DATETIME_UNIT.DAYS)
+      this._start.add(i, DATETIME_UNIT.DAY)
     );
   }
 
   /**
    * 구간 사이의 모든 Week를 DateTimeRange Array로 반환한다.
    */
-  toMatrix(): DateTimeRange[] {
+  toMatrix(): Duration[] {
     const dayOfWeek = this._start.getDayOfWeek() as WeekStartsOnType;
     let date = this._start;
     return Array.from({ length: 6 }, () => {
@@ -703,7 +539,7 @@ export class DateTimeRange {
    * @param range - 특정 구간
    * @param includeBounds - 구간의 시작과 끝 날짜와 일치하는 경우 포함할지 여부. false인 경우, 구간의 시작과 끝 날짜와 일치하는 경우는 포함하지 않습니다.
    */
-  isOverlap(range: DateTimeRange, includeBounds: boolean = false): boolean {
+  isOverlap(range: Duration, includeBounds: boolean = false): boolean {
     const partially =
       this._start.isBetween(range, includeBounds) ||
       this._end.isBetween(range, includeBounds);

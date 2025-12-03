@@ -1,4 +1,4 @@
-import { type DateTimeRange } from "./date";
+import { type Duration } from "./date";
 import type { IndexedEntry } from "./engine";
 
 export interface LayoutState {
@@ -19,7 +19,7 @@ export class CalendarLayoutEngine {
     });
   }
 
-  compute<T extends IndexedEntry>(entries: T[], range: DateTimeRange) {
+  compute<T extends IndexedEntry>(entries: T[], range: Duration) {
     const sorted = this.sortEntries(entries);
 
     const state = new Map<string, LayoutState>();

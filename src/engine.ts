@@ -1,4 +1,4 @@
-import { DateTime, DateTimeRange } from "./date";
+import { DateTime, Duration } from "./date";
 import { type EntryConfig } from "./entry";
 
 export interface IndexedEntry {
@@ -15,7 +15,7 @@ export class CalendarEngine {
     this.state = [];
   }
 
-  search(range: DateTimeRange): Array<IndexedEntry> {
+  search(range: Duration): Array<IndexedEntry> {
     return this.state
       .filter((entry) => {
         if (!entry.startDate) return false;
@@ -24,7 +24,7 @@ export class CalendarEngine {
           return entry.startDate.isBetween(range);
 
         if (entry.startDate && entry.endDate) {
-          const entryRange = new DateTimeRange(entry.startDate, entry.endDate);
+          const entryRange = new Duration(entry.startDate, entry.endDate);
           return entryRange.isOverlap(range);
         }
 

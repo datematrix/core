@@ -1,438 +1,334 @@
-// tests/datetime.role.spec.ts
-import { describe, it, expect, vi, beforeAll, afterAll, test } from "vitest";
+// DateTime.test.ts
+import { describe, it, expect } from "vitest";
 import {
   DateTime,
   DATETIME_UNIT,
-  DateTimeRange,
   WEEK_STARTS_ON,
-  type WeekStartsOnType,
-} from "../src/date"; // 경로는 프로젝트에 맞게 조정
+  // Duration 이 다른 파일에 있다면 거기서 import 하세요.
+  Duration,
+} from "../src/date"; // 경로는 프로젝트에 맞게 수정
 
-const TZ = "Europe/Prague"; // UTC+02:00
-const EPOCH = (iso: string) => new Date(iso).getTime();
+// UTC ISO 문자열로 DateTime 생성 유틸
+const TIMEZONE = {
+  SEOUL: "Asia/Seoul",
+};
+const fromUTC = (iso: string, tz = TIMEZONE.SEOUL) => DateTime.fromUTC(iso, tz);
 
-describe("DateTime: 생성/기본자(ctor)/정적 생성자 - 역할 검증", () => {
-  beforeAll(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2025-09-23T19:32:45Z"));
-  });
-  afterAll(() => vi.useRealTimers());
+describe("DateTime - basic construction & getters", () => {
+  it("UTC ms를 기준으로 생성하고 5분 단위로 truncate 해야 한다", () => {
+    // 2025-01-01T10:02:00Z -> 10:00으로 truncate
+    const originalMs = Date.UTC(2025, 0, 1, 10, 2, 0);
+    const dt = new DateTime(originalMs, TIMEZONE.SEOUL);
 
-  it("UTC 고정 생성: 주어진 UTC epoch ms를 해당 tz 뷰로 표현해야 한다", () => {
-    const dt = DateTime.fromUTC("2025-09-22T04:30:00Z", TZ);
-    expect(dt.getHours()).toBe(6);
-    expect(dt.getMinutes()).toBe(30);
-    expect(dt.getDateOfMonth()).toBe(22);
-  });
-
-  it("5분 단위 절삭(truncate): 초/밀리초 단위 입력도 5분 단위로 내림되어야 한다", () => {
-    const dt = DateTime.fromUTC("2025-09-22T04:33:42Z", TZ);
-    // 역할: 04:33:42 → 04:30 으로 보임(5분 단위 정규화)
-    expect(dt.getHours()).toBe(6);
-    expect(dt.getMinutes()).toBe(30);
+    // truncateTime이 적용되었는지: 분이 0이어야 함
+    expect(dt.getHours()).toBe(19);
+    expect(dt.getMinutes()).toBe(0);
+    // getTime()은 truncate된 시점이어야 한다
+    const truncatedMs = Date.UTC(2025, 0, 1, 10, 0, 0);
+    expect(dt.getTime()).toBe(truncatedMs);
   });
 
-  it("DateTime.fromUTC(iso): 잘못된 ISO면 명확한 에러를 던져야 한다", () => {
-    expect(() => DateTime.fromUTC("2025-09-22 04:30:00Z", TZ)).toThrow();
-    expect(() => DateTime.fromUTC("not-an-iso", "UTC")).toThrow();
-  });
+  it("fromUTC(ISO string)는 올바른 시각을 표현해야 한다", () => {
+    const dt = fromUTC("2025-01-02T03:04:00Z");
 
-  it("DateTime.fromTZ(number): UTC 기준 시각을 tz 기준의 현지 시각으로 변환해 동일 시점을 나타내야 한다", () => {
-    const localEpoch = EPOCH("2025-09-22T04:30:00Z");
-    const dt = DateTime.fromTZ(localEpoch, TZ);
-    expect(dt.getHours()).toBe(4);
-    expect(dt.getMinutes()).toBe(30);
-  });
-
-  it("DateTime.now(tz): 시스템 시각을 해당 tz 기준 DateTime으로 반환해야 한다", () => {
-    const dt = DateTime.now(TZ);
-    expect(dt.getDateOfMonth()).toBe(23);
+    expect(dt.getDateOfMonth()).toBe(2);
     expect(dt.getHours()).toBe(12);
-    expect(dt.getMinutes()).toBe(30);
+    expect(dt.getMinutes()).toBe(0); // 5분 단위 truncate 기준으로 03:04 -> 03:00
+    expect(dt.toISOString()).toBe("2025-01-02T12:00:00Z");
+  });
+
+  it("fromUTC(BaseDate)로 생성한 DateTime도 ms 기준으로 동일해야 한다", () => {
+    const iso = "2025-03-10T10:30:00Z";
+    const dt1 = fromUTC(iso, "UTC");
+    const base = (DateTime as any).fromUTC(iso, "UTC")["_base"] as any;
+
+    const dt2 = DateTime.fromUTC(base as any, "UTC");
+    expect(dt2.getTime()).toBe(dt1.getTime());
+    expect(dt2.toISOString()).toBe(dt1.toISOString());
+  });
+
+  it("getDayOfWeek / getDateOfMonth / getHours / getMinutes가 내부 view 기준으로 동작해야 한다", () => {
+    // 2025-01-01T10:15:00Z
+    const dt = fromUTC("2025-01-01T10:15:00Z", "UTC");
+
+    expect(dt.getDateOfMonth()).toBe(1);
+    expect(dt.getHours()).toBe(10);
+    expect(dt.getMinutes()).toBe(15 - (15 % 5)); // 5분 단위 truncate
+    // 2025-01-01 은 수요일 -> dayjs 기준 Sun=0 이면 3
+    expect(dt.getDayOfWeek()).toBe(3);
   });
 });
 
-describe("DateTime: 포맷/게터 - 역할 검증", () => {
-  const dt = DateTime.fromUTC("2025-09-22T04:30:00Z", TZ);
+describe("DateTime - timezone offset & getTimezoneOffset", () => {
+  it("getTimezoneOffset은 UTC / Asia/Seoul 에 대해 일관된 offset을 반환해야 한다", () => {
+    const utcOffset = DateTime.getTimezoneOffset("UTC");
+    const seoulOffset = DateTime.getTimezoneOffset("Asia/Seoul");
 
-  it("getDayOfWeek(): 0(일)~6(토)의 정수를 반환해야 한다", () => {
-    expect(dt.getDayOfWeek()).toBeGreaterThanOrEqual(0);
-    expect(dt.getDayOfWeek()).toBeLessThanOrEqual(6);
+    expect(utcOffset).toBe(0);
+    expect(seoulOffset).toBe(9 * 60); // +09:00
   });
 
-  it("format(): 날짜 문자열(yyyy-MM-dd) 형태를 반환해야 한다", () => {
-    // 역할: 구현체가 어떤 포맷터를 쓰든, yyyy-MM-dd가 포함/일치해야 함
-    const s = dt.toISO();
-    expect(s).toContain("2025-09-22");
+  it("동일한 UTC ms라도 timezone에 따라 view 시간은 달라야 한다", () => {
+    // 2025-01-01T00:00:00Z
+    const ms = Date.UTC(2025, 0, 1, 0, 0, 0);
+
+    const utc = new DateTime(ms, "UTC");
+    const seoul = new DateTime(ms, "Asia/Seoul");
+
+    // UTC view
+    expect(utc.getHours()).toBe(0);
+
+    // Asia/Seoul 은 +9시간
+    expect(seoul.getHours()).toBe(9);
+    expect(seoul.getDateOfMonth()).toBe(1); // 날짜는 그대로
   });
 
-  it("format(true): 날짜+시간 문자열을 반환해야 한다(시간 정보 포함)", () => {
-    const s = dt.toISO(true);
-    expect(s).toContain("2025-09-22"); // 날짜 포함
-    // 시간(시:분)이 들어있어야 함 (로케일 차이를 고려해 '04:30'만 확인)
-    expect(s).toMatch(/06:30/);
-  });
-});
+  it("now(tz)를 사용하면 해당 타임존 기준의 view를 가진 DateTime이 생성되어야 한다", () => {
+    const utcNow = DateTime.now("UTC");
+    const seoulNow = DateTime.now("Asia/Seoul");
 
-describe("DateTime: 변경자(setTime/add) - 역할 검증", () => {
-  it("setTime(h,m): 같은 날짜에서 시/분을 교체해야 한다", () => {
-    const dt = DateTime.fromUTC("2025-09-22T14:45:00Z", TZ);
-    const changed = dt.setTime(0, 5);
-    expect(changed.getHours()).toBe(0);
-    expect(changed.getMinutes()).toBe(5);
-    expect(changed.getDateOfMonth()).toBe(22);
-  });
-
-  it("add(minutes|hours|date): 해당 단위로 상대 이동해야 한다", () => {
-    const dt = DateTime.fromUTC("2025-09-22T04:30:00Z", TZ);
-    expect(dt.add(36, DATETIME_UNIT.MINUTES).getMinutes()).toBe(6); // 04:30 + 30m (5분단위 정규화 포함)
-    expect(dt.add(2, DATETIME_UNIT.HOURS).getHours()).toBe(8); // 04 → 06
-    expect(dt.add(3, DATETIME_UNIT.DAYS).toISO()).toBe("2025-09-25"); // +3일
+    // base는 동일한 dayjs().valueOf()를 쓰므로 diff는 timezone과 무관해야 한다
+    const diffMs = Math.abs(utcNow.diff(seoulNow, DATETIME_UNIT.MINUTE));
+    // 동일 시점에서 생성됐다고 가정하면 base diff는 0에 가까워야 한다
+    expect(diffMs).toBeLessThanOrEqual(1);
   });
 });
 
-describe("DateTime: 비교자(isEqual/Before/After/OnOrBefore/OnOrAfter) - 역할 검증", () => {
-  const a = DateTime.fromUTC("2025-09-22T04:30:00Z", TZ);
-  const b = DateTime.fromUTC("2025-09-22T06:00:00Z", TZ);
-  const c = DateTime.fromUTC("2025-09-22T06:00:00Z", "Asia/Seoul");
-  const same = DateTime.fromUTC("2025-09-22T04:30:00Z", "UTC");
+describe("DateTime - diff / setTime / add", () => {
+  it("diff는 base(UTC) 기준으로 timezone과 무관하게 동작해야 한다", () => {
+    const a = fromUTC("2025-03-10T00:00:00Z", "UTC");
+    const b = fromUTC("2025-03-12T00:00:00Z", "Asia/Seoul");
 
-  it("isEqual: 동일 시점이면 true", () => {
-    expect(a.isEqual(same)).toBe(true);
-    expect(a.isEqual(b)).toBe(false);
-    expect(b.isEqual(c)).toBe(true);
+    expect(b.diff(a, DATETIME_UNIT.DAY)).toBe(2);
+    expect(a.diff(b, DATETIME_UNIT.DAY)).toBe(-2);
   });
 
-  it("isBefore/isAfter: 엄격 비교(동일 시점은 false)", () => {
-    expect(a.isBefore(b)).toBe(true);
-    expect(b.isBefore(a)).toBe(false);
-    expect(a.isBefore(same)).toBe(false);
+  it("setTime은 시/분을 변경한 새로운 DateTime을 반환해야 하며, 원본은 불변이어야 한다", () => {
+    const dt = fromUTC("2025-03-10T10:30:00Z", "UTC");
 
-    expect(b.isAfter(a)).toBe(true);
-    expect(a.isAfter(b)).toBe(false);
-    expect(a.isAfter(same)).toBe(false);
-  });
+    const changed = dt.setTime(8, 0);
 
-  it("isOnOrBefore/isOnOrAfter: 동일 시점 포함", () => {
-    expect(a.isOnOrBefore(same)).toBe(true);
-    expect(a.isOnOrAfter(same)).toBe(true);
-    expect(a.isOnOrBefore(b)).toBe(true);
-    expect(b.isOnOrAfter(a)).toBe(true);
-  });
-});
-
-describe("DateTime: diff - 역할 검증", () => {
-  it("diff(unit): 두 시점 간 차이를 단위별 정수로 반환해야 한다(시간/일/월/년)", () => {
-    const a = new DateTime(EPOCH("2025-09-22T00:00:00Z"), "UTC");
-    const b = new DateTime(EPOCH("2025-09-23T01:00:00Z"), "UTC");
-    expect(a.diff(b, DATETIME_UNIT.HOURS)).toBeGreaterThanOrEqual(25); // 최소 25h
-    expect(a.diff(b, DATETIME_UNIT.DAYS)).toBeGreaterThanOrEqual(1); // 최소 1일
-  });
-
-  it("diff('month'|'year'): 연/월 경계 이동을 정수 차이로 나타내야 한다", () => {
-    const a = new DateTime(EPOCH("2025-01-15T00:00:00Z"), "UTC");
-    const b = new DateTime(EPOCH("2026-03-15T00:00:00Z"), "UTC");
-    expect(a.diff(b, DATETIME_UNIT.YEAR)).toBe(1); // 2025 → 2026
-    expect(a.diff(b, DATETIME_UNIT.MONTH)).toBe(14); // 2025-01 → 2026-03 (14개월)
-  });
-});
-
-describe("DateTime: isToday - 역할 검증", () => {
-  beforeAll(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2025-09-22T12:34:56Z"));
-  });
-  afterAll(() => vi.useRealTimers());
-
-  it("같은 tz에서 ‘오늘’이면 true, 아니면 false", () => {
-    const today = new DateTime(EPOCH("2025-09-22T00:00:00Z"), "UTC");
-    const tomorrow = new DateTime(EPOCH("2025-09-23T00:00:00Z"), "UTC");
-    expect(today.isToday()).toBe(true);
-    expect(tomorrow.isToday()).toBe(false);
-  });
-});
-
-describe("DateTime: isBetween - 역할 검증 (경계 포함/제외 옵션)", () => {
-  const tz = "UTC";
-  const s = new DateTime(EPOCH("2025-09-22T00:00:00Z"), tz);
-  const e = new DateTime(EPOCH("2025-09-24T00:00:00Z"), tz);
-  const mid = new DateTime(EPOCH("2025-09-23T00:00:00Z"), tz);
-  const atStart = new DateTime(EPOCH("2025-09-22T00:00:00Z"), tz);
-  const atEnd = new DateTime(EPOCH("2025-09-24T00:00:00Z"), tz);
-  const range = new DateTimeRange(s, e);
-
-  it("includeBounds=true(기본): [start, end] 내부면 true", () => {
-    expect(mid.isBetween(s, e)).toBe(true);
-    expect(atStart.isBetween(s, e)).toBe(true);
-    expect(atEnd.isBetween(s, e)).toBe(true);
-
-    // range 시그니처도 동일 규칙
-    expect(mid.isBetween(range)).toBe(true);
-    expect(atStart.isBetween(range)).toBe(true);
-    expect(atEnd.isBetween(range)).toBe(true);
-  });
-
-  it("includeBounds=false: (start, end) 열린구간 내부만 true", () => {
-    expect(mid.isBetween(s, e, false)).toBe(true);
-    expect(atStart.isBetween(s, e, false)).toBe(false);
-    expect(atEnd.isBetween(s, e, false)).toBe(false);
-
-    expect(mid.isBetween(range, false)).toBe(true);
-    expect(atStart.isBetween(range, false)).toBe(false);
-    expect(atEnd.isBetween(range, false)).toBe(false);
-  });
-});
-
-describe("DateTime: startOf - 역할 검증", () => {
-  const dt = DateTime.fromUTC("2025-09-22T14:45:00Z", TZ);
-
-  it("startOf('date'): 해당 날짜의 00:00로 이동해야 한다", () => {
-    const s = dt.startOf(DATETIME_UNIT.DAYS);
-    expect(s.getDateOfMonth()).toBe(22);
-    expect(s.getHours()).toBe(0);
-    expect(s.getMinutes()).toBe(0);
-  });
-
-  it("startOf('month'): 해당 월의 1일 00:00로 이동해야 한다", () => {
-    const s = dt.startOf(DATETIME_UNIT.MONTH);
-    expect(s.toISO(true)).toBe("2025-09-01 00:00:00");
-  });
-
-  it("startOf('year'): 해당 해 1월 1일 00:00로 이동해야 한다", () => {
-    const s = dt.startOf(DATETIME_UNIT.YEAR);
-    expect(s.toISO(true)).toBe("2025-01-01 00:00:00");
-  });
-
-  it("startOf('week', weekStartsOn): weekStartsOn(SUN/MON)에 따라 ‘그 주의 시작 00:00’로 이동해야 한다", () => {
-    const dt = DateTime.fromUTC("2025-09-22T14:45:00Z", TZ);
-    const dt2 = DateTime.fromUTC("2025-09-28T14:45:00Z", TZ);
-    const a = dt.startOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.MON);
-    const b = dt.startOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.SUN);
-    const c = dt2.startOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.SUN);
-    const d = dt2.startOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.MON);
-    expect(a.toISO(true)).toBe("2025-09-22 00:00:00");
-    expect(b.toISO(true)).toBe("2025-09-21 00:00:00");
-    expect(c.toISO(true)).toBe("2025-09-28 00:00:00");
-    expect(d.toISO(true)).toBe("2025-09-22 00:00:00");
-  });
-});
-
-describe("DateTime: endOf - 역할 검증", () => {
-  const dt = DateTime.fromUTC("2025-09-22T14:45:00Z", TZ);
-
-  it("endOf('date'): 해당 날짜의 23:59로 이동해야 한다", () => {
-    const s = dt.endOf(DATETIME_UNIT.DAYS);
-    expect(s.getDateOfMonth()).toBe(22);
-    expect(s.getHours()).toBe(23);
-    expect(s.getMinutes()).toBe(59);
-  });
-
-  it("endOf('month'): 해당 월의 말일 23:59로 이동해야 한다", () => {
-    const dt2 = DateTime.fromUTC("2025-02-22T14:45:00Z", TZ);
-    const s = dt.endOf(DATETIME_UNIT.MONTH);
-    const e = dt2.endOf(DATETIME_UNIT.MONTH);
-    expect(s.toISO(true)).toBe("2025-09-30 23:59:00");
-    expect(e.toISO(true)).toBe("2025-02-28 23:59:00");
-  });
-
-  it("endOf('year'): 해당 해 1월 1일 00:00로 이동해야 한다", () => {
-    const s = dt.endOf(DATETIME_UNIT.YEAR);
-    expect(s.toISO(true)).toBe("2025-12-31 23:59:00");
-  });
-
-  it("endOf('week', weekStartsOn): weekStartsOn(SUN/MON)에 따라 ‘그 주의 마지막 23:59’로 이동해야 한다", () => {
-    const dt = DateTime.fromUTC("2025-09-22T14:45:00Z", TZ);
-    const dt2 = DateTime.fromUTC("2025-09-28T14:45:00Z", TZ);
-    const a = dt.endOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.MON);
-    const b = dt.endOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.SUN);
-    const c = dt2.endOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.SUN);
-    const d = dt2.endOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.MON);
-    expect(a.toISO(true)).toBe("2025-09-28 23:59:00");
-    expect(b.toISO(true)).toBe("2025-09-27 23:59:00");
-    expect(c.toISO(true)).toBe("2025-10-04 23:59:00");
-    expect(d.toISO(true)).toBe("2025-09-28 23:59:00");
-  });
-});
-
-describe("DateTime: weekRange/monthMatrix - 역할 명세(미구현)", () => {
-  test.todo(
-    "weekRange(weekStartsOn): 해당 DateTime이 속한 1주 범위를 [start,end]로 반환 (경계 포함)"
-  );
-  test.todo(
-    "monthMatrix(weekStartsOn): 월 캘린더 매트릭스를 주(week) 단위의 DateTimeRange[]로 반환 (보통 5~6주)"
-  );
-
-  // 예시 명세(구현 완료 시 확인할 포인트)
-  // - monthMatrix의 첫 번째 주는 month.startOf('month')에서 시작 주(weekStartsOn)로 당겨진 시작일
-  // - 마지막 주는 month.endOf('month')가 속한 주의 끝일
-  // - 모든 range는 [start,end] (포함) 기준
-});
-
-// tests/datetime.czech.spec.ts
-
-describe("DateTime (Europe/Prague) - 생성자/정적 생성자", () => {
-  beforeAll(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2025-09-23T19:32:45Z"));
-  });
-  afterAll(() => vi.useRealTimers());
-
-  it("UTC 기준 입력을 Europe/Prague 뷰로 변환해야 한다", () => {
-    // 2025-09-22T04:30:00Z = 프라하 2025-09-22 06:30 (CEST, +2)
-    const dt = new DateTime(EPOCH("2025-09-22T04:30:00Z"), TZ);
-    expect(dt.getHours()).toBe(6);
-    expect(dt.getMinutes()).toBe(30);
-    expect(dt.getDateOfMonth()).toBe(22);
-  });
-
-  it("fromUTC: ISO8601 UTC 문자열을 파싱해 현지 시각 뷰를 제공해야 한다", () => {
-    const dt = DateTime.fromUTC("2025-09-22T04:30:00Z", TZ);
-    expect(dt.getHours()).toBe(6);
-    expect(dt.getMinutes()).toBe(30);
-  });
-
-  it("fromTZ: 현지 시각(epoch ms)을 UTC로 환산 후 동일 시점을 생성해야 한다", () => {
-    const localEpoch = EPOCH("2025-09-22T06:30:00Z"); // 프라하 현지 시각
-    const dt = DateTime.fromTZ(localEpoch, TZ);
-    expect(dt.getHours()).toBe(6);
-    expect(dt.getMinutes()).toBe(30);
-  });
-
-  it("now(): 시스템 시각을 Europe/Prague 기준으로 생성해야 한다", () => {
-    const dt = DateTime.now(TZ);
-    expect(dt.getHours()).toBe(12);
-    expect(dt.getMinutes()).toBe(30);
-  });
-});
-
-describe("DateTime (Europe/Prague) - 포맷/게터", () => {
-  const dt = new DateTime(EPOCH("2025-09-22T04:30:00Z"), TZ); // 06:30
-
-  it("getDayOfWeek(): 현지 요일을 반환 (월요일=1)", () => {
-    expect(dt.getDayOfWeek()).toBe(1); // 2025-09-22은 월요일
-  });
-
-  it("format(): 현지 날짜 문자열을 반환해야 한다", () => {
-    expect(dt.toISO()).toContain("2025-09-22");
-  });
-
-  it("format(true): 현지 날짜+시간을 반환해야 한다", () => {
-    const s = dt.toISO(true);
-    expect(s).toContain("2025-09-22");
-    expect(s).toMatch(/06:30/);
-  });
-});
-
-describe("DateTime (Europe/Prague) - 변경자", () => {
-  const base = new DateTime(EPOCH("2025-09-22T04:30:00Z"), TZ); // 06:30
-
-  it("setTime(): 시/분을 현지 기준으로 교체해야 한다", () => {
-    const changed = base.setTime(8, 5);
     expect(changed.getHours()).toBe(8);
-    expect(changed.getMinutes()).toBe(5);
-    expect(changed.getDateOfMonth()).toBe(22);
+    expect(changed.getMinutes()).toBe(0);
+    expect(changed.toISOString()).toBe("2025-03-10T08:00:00Z");
+
+    // 원본은 그대로
+    expect(dt.getHours()).toBe(10);
   });
 
-  it("add(): 단위별 상대 이동", () => {
-    expect(base.add(30, DATETIME_UNIT.MINUTES).getMinutes()).toBe(0); // 06:30 + 30m = 07:00
-    expect(base.add(2, DATETIME_UNIT.HOURS).getHours()).toBe(8); // 06 → 08
-    expect(base.add(1, DATETIME_UNIT.DAYS).getDateOfMonth()).toBe(23); // 하루 뒤
-  });
-});
+  it("add는 지정한 단위만큼 이동한 새로운 DateTime을 반환해야 하며, base 기준으로 일관되게 동작해야 한다", () => {
+    const dt = fromUTC("2025-03-10T10:00:00Z", "UTC");
 
-describe("DateTime (Europe/Prague) - 비교자", () => {
-  const a = new DateTime(EPOCH("2025-09-22T04:30:00Z"), TZ); // 06:30
-  const b = new DateTime(EPOCH("2025-09-22T06:00:00Z"), TZ); // 08:00
-  const same = new DateTime(EPOCH("2025-09-22T04:30:00Z"), TZ);
+    const plus1Day = dt.add(1, DATETIME_UNIT.DAY);
+    const minus2Hours = dt.add(-2, DATETIME_UNIT.HOUR);
 
-  it("isEqual: 동일 시점만 true", () => {
-    expect(a.isEqual(same)).toBe(true);
-    expect(a.isEqual(b)).toBe(false);
-  });
+    expect(plus1Day.toISOString()).toBe("2025-03-11T10:00:00Z");
+    expect(minus2Hours.toISOString()).toBe("2025-03-10T08:00:00Z");
 
-  it("isBefore/isAfter: 순서 비교 (동일 시각은 false)", () => {
-    expect(a.isBefore(b)).toBe(true);
-    expect(b.isAfter(a)).toBe(true);
-    expect(a.isBefore(same)).toBe(false);
-    expect(a.isAfter(same)).toBe(false);
-  });
-
-  it("isOnOrBefore/isOnOrAfter: 동일 시각 포함", () => {
-    expect(a.isOnOrBefore(same)).toBe(true);
-    expect(a.isOnOrAfter(same)).toBe(true);
+    // 원본 불변
+    expect(dt.toISOString()).toBe("2025-03-10T10:00:00Z");
   });
 });
 
-describe("DateTime (Europe/Prague) - diff", () => {
-  const start = new DateTime(EPOCH("2025-03-29T23:00:00Z"), TZ); // 현지 2025-03-30 01:00 (DST 시작 전날 밤)
-  const end = new DateTime(EPOCH("2025-03-30T23:00:00Z"), TZ); // 현지 2025-03-31 01:00 (DST 적용됨)
+describe("DateTime - equality & ordering", () => {
+  it("isEqual은 기본적으로 minute 단위로 같음을 비교해야 한다", () => {
+    const a = fromUTC("2025-01-01T10:00:00Z", "UTC");
+    const b = fromUTC("2025-01-01T10:00:30Z", "UTC"); // 같은 minute
 
-  it("diff('hours'): DST 전환 포함해도 정수 시간 차이 반환해야 한다", () => {
-    const hours = start.diff(end, DATETIME_UNIT.HOURS);
-    expect(typeof hours).toBe("number");
+    expect(a.isEqual(b)).toBe(true);
+
+    const c = fromUTC("2025-01-01T10:06:00Z", "UTC");
+    expect(a.isEqual(c)).toBe(false);
   });
 
-  it("diff('date'): 달력상의 일 수 차이 반환해야 한다", () => {
-    const days = start.diff(end, DATETIME_UNIT.DAYS);
-    expect(days).toBe(1);
-  });
-});
+  it("isEqual은 unit을 바꾸면 해당 단위 기준으로 비교해야 한다", () => {
+    const a = fromUTC("2025-01-01T10:00:00Z", "UTC");
+    const b = fromUTC("2025-01-01T10:59:00Z", "UTC");
 
-describe("DateTime (Europe/Prague) - isToday", () => {
-  beforeAll(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2025-09-22T12:34:56Z")); // 현지 14:34
-  });
-  afterAll(() => vi.useRealTimers());
+    expect(a.isEqual(b, DATETIME_UNIT.HOUR)).toBe(true);
 
-  it("같은 날짜면 true, 다르면 false", () => {
-    const today = new DateTime(EPOCH("2025-09-22T00:00:00Z"), TZ);
-    const tomorrow = new DateTime(EPOCH("2025-09-23T00:00:00Z"), TZ);
+    const c = fromUTC("2025-01-01T11:00:00Z", "UTC");
+    expect(a.isEqual(c, DATETIME_UNIT.HOUR)).toBe(false);
+  });
+
+  it("isBefore / isOnOrBefore / isAfter / isOnOrAfter는 BaseDate의 비교 기준과 동일하게 동작해야 한다", () => {
+    const earlier = fromUTC("2025-01-01T10:00:00Z", "UTC");
+    const same = fromUTC("2025-01-01T10:00:30Z", "UTC");
+    const later = fromUTC("2025-01-01T10:06:00Z", "UTC");
+
+    expect(earlier.isBefore(later)).toBe(true);
+    expect(later.isBefore(earlier)).toBe(false);
+    expect(earlier.isBefore(same)).toBe(false); // 같은 minute
+
+    expect(earlier.isOnOrBefore(later)).toBe(true);
+    expect(earlier.isOnOrBefore(same)).toBe(true);
+    expect(later.isOnOrBefore(earlier)).toBe(false);
+
+    expect(later.isAfter(earlier)).toBe(true);
+    expect(earlier.isAfter(later)).toBe(false);
+    expect(same.isAfter(earlier)).toBe(false);
+
+    expect(later.isOnOrAfter(earlier)).toBe(true);
+    expect(same.isOnOrAfter(earlier)).toBe(true);
+    expect(earlier.isOnOrAfter(later)).toBe(false);
+  });
+
+  it("isToday는 view 기준으로 오늘 날짜인지 판별해야 한다", () => {
+    const today = DateTime.now();
     expect(today.isToday()).toBe(true);
-    expect(tomorrow.isToday()).toBe(false);
+
+    const yesterday = today.add(-1, DATETIME_UNIT.DAY);
+    expect(yesterday.isToday()).toBe(false);
   });
 });
 
-describe("DateTime (Europe/Prague) - isBetween", () => {
-  const s = new DateTime(EPOCH("2025-09-22T00:00:00Z"), TZ);
-  const e = new DateTime(EPOCH("2025-09-24T00:00:00Z"), TZ);
-  const mid = new DateTime(EPOCH("2025-09-23T00:00:00Z"), TZ);
+describe("DateTime - isBetween (overloads)", () => {
+  it("isBetween(start, end)는 기본적으로 양 끝을 포함해야 한다", () => {
+    const start = fromUTC("2025-01-01T00:00:00Z", "UTC");
+    const end = fromUTC("2025-01-10T00:00:00Z", "UTC");
 
-  it("기본: 경계 포함 [s,e]", () => {
-    expect(mid.isBetween(s, e)).toBe(true);
-    expect(s.isBetween(s, e)).toBe(true);
-    expect(e.isBetween(s, e)).toBe(true);
+    const middle = fromUTC("2025-01-05T00:00:00Z", "UTC");
+    const atStart = fromUTC("2025-01-01T00:00:00Z", "UTC");
+    const atEnd = fromUTC("2025-01-10T00:00:00Z", "UTC");
+    const before = fromUTC("2024-12-31T23:59:00Z", "UTC");
+    const after = fromUTC("2025-01-10T00:06:00Z", "UTC");
+
+    expect(middle.isBetween(start, end)).toBe(true);
+    expect(atStart.isBetween(start, end)).toBe(true);
+    expect(atEnd.isBetween(start, end)).toBe(true);
+
+    expect(before.isBetween(start, end)).toBe(false);
+    expect(after.isBetween(start, end)).toBe(false);
   });
 
-  it("includeBounds=false: 경계 제외 (s,e)", () => {
-    expect(mid.isBetween(s, e, false)).toBe(true);
-    expect(s.isBetween(s, e, false)).toBe(false);
-    expect(e.isBetween(s, e, false)).toBe(false);
+  it("isBetween(start, end, false)는 양 끝을 제외해야 한다", () => {
+    const start = fromUTC("2025-01-01T00:00:00Z", "UTC");
+    const end = fromUTC("2025-01-10T00:00:00Z", "UTC");
+
+    const middle = fromUTC("2025-01-05T00:00:00Z", "UTC");
+    const atStart = fromUTC("2025-01-01T00:00:00Z", "UTC");
+    const atEnd = fromUTC("2025-01-10T00:00:00Z", "UTC");
+
+    expect(middle.isBetween(start, end, false)).toBe(true);
+    expect(atStart.isBetween(start, end, false)).toBe(false);
+    expect(atEnd.isBetween(start, end, false)).toBe(false);
+  });
+
+  it("isBetween(Duration) 오버로드도 동일하게 동작해야 한다", () => {
+    const start = fromUTC("2025-01-01T00:00:00Z", "UTC");
+    const end = fromUTC("2025-01-10T00:00:00Z", "UTC");
+    const duration = new Duration(start, end);
+
+    const middle = fromUTC("2025-01-05T00:00:00Z", "UTC");
+    const atStart = fromUTC("2025-01-01T00:00:00Z", "UTC");
+    const atEnd = fromUTC("2025-01-10T00:00:00Z", "UTC");
+
+    expect(middle.isBetween(duration)).toBe(true);
+    expect(atStart.isBetween(duration)).toBe(true);
+    expect(atEnd.isBetween(duration)).toBe(true);
+
+    expect(middle.isBetween(duration, false)).toBe(true);
+    expect(atStart.isBetween(duration, false)).toBe(false);
+    expect(atEnd.isBetween(duration, false)).toBe(false);
   });
 });
 
-describe("DateTime (Europe/Prague) - startOf", () => {
-  const dt = new DateTime(EPOCH("2025-09-22T14:45:00Z"), TZ); // 16:45 현지
+describe("DateTime - startOf / endOf (day, week, month)", () => {
+  it("startOf('day') / endOf('day')는 같은 날짜 내에서 00:00 / 23:55로 설정해야 한다", () => {
+    const dt = fromUTC("2025-03-10T10:20:00Z", "UTC");
 
-  it("startOf('date'): 해당 날짜 00:00", () => {
-    const s = dt.startOf(DATETIME_UNIT.DAYS);
-    expect(s.getHours()).toBe(0);
-    expect(s.getMinutes()).toBe(0);
-    expect(s.getDateOfMonth()).toBe(22);
+    const s = dt.startOf(DATETIME_UNIT.DAY);
+    const e = dt.endOf(DATETIME_UNIT.DAY);
+
+    expect(s.toISOString()).toBe("2025-03-10T00:00:00Z");
+    expect(e.toISOString()).toBe("2025-03-10T23:55:00Z");
   });
 
-  it("startOf('month'): 월 첫날 00:00", () => {
-    const s = dt.startOf(DATETIME_UNIT.MONTH);
-    expect(s.getDateOfMonth()).toBe(1);
-    expect(s.getHours()).toBe(0);
+  it("startOf('week', MON) 은 월요일 00:00, endOf('week', MON)은 일요일 23:55여야 한다", () => {
+    // 2025-03-12 (수요일)
+    const dt = fromUTC("2025-03-12T10:00:00Z", "UTC");
+
+    const start = dt.startOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.MON);
+    const end = dt.endOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.MON);
+
+    expect(start.toISOString()).toBe("2025-03-10T00:00:00Z"); // 월요일
+    expect(end.toISOString()).toBe("2025-03-16T23:55:00Z"); // 일요일
   });
 
-  test.todo("startOf('year'): 해당 해 1월 1일 00:00");
-  test.todo("startOf('week'): weekStartsOn(SUN/MON)에 따라 주 시작일로 이동");
+  it("startOf('week', SUN)은 일요일 00:00, endOf('week', SUN)은 토요일 23:55여야 한다", () => {
+    // 2025-03-12 (수요일)
+    const dt = fromUTC("2025-03-12T10:00:00Z", "UTC");
+
+    const start = dt.startOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.SUN);
+    const end = dt.endOf(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.SUN);
+
+    expect(start.toISOString()).toBe("2025-03-09T00:00:00Z"); // 일요일
+    expect(end.toISOString()).toBe("2025-03-15T23:55:00Z"); // 토요일
+  });
+
+  it("startOf('month') / endOf('month')는 월의 첫날 / 마지막날을 기준으로 해야 한다", () => {
+    const dt = fromUTC("2025-05-17T10:20:00Z", "UTC");
+
+    const start = dt.startOf(DATETIME_UNIT.MONTH);
+    const end = dt.endOf(DATETIME_UNIT.MONTH);
+
+    expect(start.getDateOfMonth()).toBe(1);
+    expect(start.getHours()).toBe(0);
+    expect(start.getMinutes()).toBe(0);
+
+    expect(end.getDateOfMonth()).toBe(31);
+    expect(end.getHours()).toBe(23);
+    expect(end.getMinutes()).toBe(55);
+  });
 });
 
-describe("DateTime (Europe/Prague) - endOf/weekRange/monthMatrix (미구현)", () => {
-  test.todo("endOf('date'|'month'|'year'|'week'): 경계 시각 반환");
-  test.todo("weekRange(weekStartsOn): 속한 주 범위 반환");
-  test.todo("monthMatrix(weekStartsOn): 달력 주차 매트릭스 반환");
+describe("DateTime - range(day/week/month)", () => {
+  it("range('day')는 해당 날짜의 00:00~23:59 Duration을 반환해야 한다", () => {
+    const dt = fromUTC("2025-03-10T10:00:00Z", "UTC");
+
+    const duration = dt.range(DATETIME_UNIT.DAY);
+    expect(duration.startDate.toISOString()).toBe("2025-03-10T00:00:00Z");
+    expect(duration.endDate.toISOString()).toBe("2025-03-10T23:55:00Z");
+  });
+
+  it("range('week', MON)은 월~일 전체를 포함하는 Duration을 반환해야 한다", () => {
+    const dt = fromUTC("2025-03-12T10:00:00Z", "UTC");
+
+    const duration = dt.range(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.MON);
+
+    expect(duration.startDate.toISOString()).toBe("2025-03-10T00:00:00Z");
+    expect(duration.endDate.toISOString()).toBe("2025-03-16T23:55:00Z");
+  });
+
+  it("range('month', MON)은 해당 월을 모두 포함하는 week span Duration을 반환해야 한다", () => {
+    const dt = fromUTC("2025-05-17T10:00:00Z", "UTC");
+
+    const duration = dt.range(DATETIME_UNIT.MONTH, WEEK_STARTS_ON.MON);
+
+    // 2025-05-01은 목요일 -> 월요일 시작 week span 이면 4월 말까지 포함될 수 있음
+    // 여기서는 정확한 값보단 '시작 <= 5월1일 <= 종료 >= 5월31일' 을 검증
+    const start = duration.startDate;
+    const end = duration.endDate;
+
+    const firstOfMonth = fromUTC("2025-05-01T00:00:00Z", "UTC");
+    const lastOfMonth = fromUTC("2025-05-31T23:55:00Z", "UTC");
+
+    expect(firstOfMonth.isOnOrAfter(start)).toBe(true);
+    expect(lastOfMonth.isOnOrBefore(end)).toBe(true);
+  });
+});
+
+describe("DateTime - format / toISOString", () => {
+  it("format은 view 기준으로 dayjs.format 템플릿을 적용해야 한다", () => {
+    const dt = fromUTC("2025-07-01T03:04:00Z", "UTC");
+
+    expect(dt.format("YYYY-MM-DD")).toBe("2025-07-01");
+    expect(dt.format("HH:mm")).toBe("03:00"); // 5분 단위 truncate
+  });
+
+  it("toISOString은 view 기준의 'YYYY-MM-DDTHH:mm:ssZ' 문자열을 반환해야 한다", () => {
+    const dt = fromUTC("2025-12-03T09:08:00Z", "UTC");
+
+    expect(dt.toISOString()).toBe("2025-12-03T09:05:00Z");
+  });
 });

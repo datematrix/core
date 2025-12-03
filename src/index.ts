@@ -1,6 +1,6 @@
 export {
   DateTime,
-  DateTimeRange,
+  Duration,
   WEEK_STARTS_ON,
   DATETIME_UNIT,
   type DateTimeUnit,

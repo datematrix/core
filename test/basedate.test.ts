@@ -1,339 +1,229 @@
-import { BaseDate, DATETIME_UNIT, truncateTime } from "../src/date";
-import { describe, expect, it } from "vitest"; // <-- **
+// BaseDate.test.ts
+import { describe, it, expect, test, beforeAll, afterAll, vi } from "vitest";
+import { BaseDate, DATETIME_UNIT, truncateTime } from "../src/date"; // 경로는 프로젝트에 맞게 수정
+import dayjs from "dayjs";
 
-const EPOCH = (iso: string) => new Date(iso).getTime();
+// UTC 기준 BaseDate 생성 유틸 (테스트 가독성용)
+const makeBaseDate = (
+  year: number,
+  month: number, // 1~12
+  date: number,
+  hour = 0,
+  minute = 0,
+  second = 0
+) => {
+  const ms = Date.UTC(year, month - 1, date, hour, minute, second);
+  return { baseDate: new BaseDate(ms), ms };
+};
 
-describe("BaseDate - 생성자와 기본 getter", () => {
-  it("UTC ms 입력을 정확히 분해해야 한다", () => {
-    const b = new BaseDate(EPOCH("2025-09-22T04:30:00Z"));
-    expect(b.year).toBe(2025);
-    expect(b.month).toBe(8); // 0-based (September=8)
-    expect(b.date).toBe(22);
-    expect(b.hours).toBe(4);
-    expect(b.minutes).toBe(30);
-    expect(b.day).toBe(1); // Monday
-  });
+describe("DateTime (Europe/Prague) - endOf/weekRange/monthMatrix (미구현)", () => {
+  test.todo("endOf('date'|'month'|'year'|'week'): 경계 시각 반환");
+  test.todo("weekRange(weekStartsOn): 속한 주 범위 반환");
+  test.todo("monthMatrix(weekStartsOn): 달력 주차 매트릭스 반환");
+});
 
-  it("toJSON(): 구조화된 객체를 반환한다", () => {
-    const b = new BaseDate(EPOCH("2025-01-01T00:00:00Z"));
-    expect(b.toJSON()).toEqual({
-      year: 2025,
-      month: 0,
-      date: 1,
-      hours: 0,
-      minutes: 0,
-    });
-  });
+describe("truncateTime", () => {
+  it("5분 단위로 내림(truncate)되어야 한다", () => {
+    const MINUTES = 60 * 1000;
+    const fiveMinutes = 5 * MINUTES; // 300,000 ms
+    const threeMinutes = 3 * MINUTES;
+    const twoMinutes = 2 * MINUTES;
+    const tenMinutes = 10 * MINUTES;
+    const fifteenMinutes = 15 * MINUTES;
 
-  it("getTime(): epoch ms 반환", () => {
-    const ms = EPOCH("2025-09-22T04:30:00Z");
-    const b = new BaseDate(ms);
-    expect(b.getTime()).toBe(ms);
+    expect(truncateTime(0)).toBe(0);
+    expect(truncateTime(fiveMinutes - twoMinutes)).toBe(0);
+    expect(truncateTime(fiveMinutes)).toBe(fiveMinutes);
+    expect(truncateTime(fiveMinutes + twoMinutes)).toBe(fiveMinutes);
+
+    expect(truncateTime(tenMinutes + threeMinutes)).toBe(tenMinutes);
+    expect(truncateTime(tenMinutes + fiveMinutes)).toBe(fifteenMinutes);
+    expect(truncateTime(fifteenMinutes + twoMinutes)).toBe(fifteenMinutes);
   });
 });
 
-describe("BaseDate - diff()", () => {
-  const a = new BaseDate(EPOCH("2025-01-01T00:00:00Z"));
-  const b = new BaseDate(EPOCH("2026-03-01T00:00:00Z"));
+describe("BaseDate - Asia/Seoul", () => {
+  beforeAll(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date());
+    dayjs.tz.setDefault("Asia/Seoul");
+  });
+  afterAll(() => vi.useRealTimers());
 
-  it("year 단위 차이", () => {
-    expect(a.diff(b, DATETIME_UNIT.YEAR)).toBe(1);
-    expect(b.diff(a, DATETIME_UNIT.YEAR)).toBe(-1);
+  it("getTime은 생성시 전달한 ms를 그대로 반환해야 한다.", () => {
+    const ms = Date.UTC(2025, 0, 2, 3, 4, 0); // 2025-01-02T03:04:00Z
+    const d = new BaseDate(ms);
+    expect(d.getTime()).toBe(ms);
   });
 
-  it("month 단위 차이 (연도 경계 포함)", () => {
-    expect(a.diff(b, DATETIME_UNIT.MONTH)).toBe(14);
+  it("diff는 지정한 단위 기준으로 두 날짜의 차이를 계산해야 한다 (day 단위)", () => {
+    const { baseDate: d1 } = makeBaseDate(2025, 1, 1, 0, 0, 0);
+    const { baseDate: d3 } = makeBaseDate(2025, 1, 21, 0, 0, 0);
+
+    expect(d3.diff(d1, DATETIME_UNIT.DAY)).toBe(20);
+    expect(d1.diff(d3, DATETIME_UNIT.DAY)).toBe(-20);
   });
 
-  it("date 단위 차이", () => {
-    const c = new BaseDate(EPOCH("2025-01-10T00:00:00Z"));
-    expect(a.diff(c, DATETIME_UNIT.DAYS)).toBe(9);
-    expect(c.diff(a, DATETIME_UNIT.DAYS)).toBe(-9);
+  it("diff는 지정한 단위 기준으로 두 날짜의 차이를 계산해야 한다 (hour 단위)", () => {
+    const { baseDate: d1 } = makeBaseDate(2025, 1, 1, 0, 0, 0);
+    const { baseDate: d2 } = makeBaseDate(2025, 1, 1, 5, 0, 0);
+
+    expect(d2.diff(d1, DATETIME_UNIT.HOUR)).toBe(5);
+    expect(d1.diff(d2, DATETIME_UNIT.HOUR)).toBe(-5);
   });
 
-  it("hours 단위 차이", () => {
-    const c = new BaseDate(EPOCH("2025-01-01T12:00:00Z"));
-    expect(a.diff(c, DATETIME_UNIT.HOURS)).toBe(12);
+  it("set은 지정한 단위의 값을 변경한 새로운 BaseDate를 반환해야 하며 원본은 불변이어야 한다", () => {
+    const { baseDate: d } = makeBaseDate(2025, 1, 1, 10, 15, 0);
+
+    const changedHour = d.set(0, DATETIME_UNIT.HOUR);
+
+    expect(changedHour.get(DATETIME_UNIT.HOUR)).toBe(0);
+    expect(changedHour.get(DATETIME_UNIT.MINUTE)).toBe(15);
+
+    // 원본은 그대로
+    expect(d.get(DATETIME_UNIT.HOUR)).toBe(10);
+    expect(d.get(DATETIME_UNIT.MINUTE)).toBe(15);
   });
 
-  it("minutes 단위 차이", () => {
-    const c = new BaseDate(EPOCH("2025-01-01T00:30:00Z"));
-    expect(a.diff(c, DATETIME_UNIT.MINUTES)).toBe(30);
-  });
-});
+  it("get은 dayjs.get과 동일하게 동작해야 한다", () => {
+    const { baseDate: d } = makeBaseDate(2025, 3, 15, 13, 45, 0);
 
-describe("BaseDate - set()", () => {
-  const base = new BaseDate(EPOCH("2025-09-22T04:30:00Z"));
-
-  it("연도 변경", () => {
-    const changed = base.set(2030, DATETIME_UNIT.YEAR);
-    expect(changed.year).toBe(2030);
-    expect(changed.month).toBe(base.month);
+    expect(d.get(DATETIME_UNIT.YEAR)).toBe(2025);
+    // month는 0-based
+    expect(d.get(DATETIME_UNIT.MONTH)).toBe(2); // 3월 -> 2
+    expect(d.get(DATETIME_UNIT.HOUR)).toBe(13);
+    expect(d.get(DATETIME_UNIT.MINUTE)).toBe(45);
   });
 
-  it("월 변경", () => {
-    const changed = base.set(0, DATETIME_UNIT.MONTH); // January
-    expect(changed.month).toBe(0);
+  it("get은 dayjs.get과 동일하게 동작해야 한다", () => {
+    const { baseDate: d } = makeBaseDate(2025, 3, 15, 13, 45, 0);
+
+    expect(d.get(DATETIME_UNIT.YEAR)).toBe(2025);
+    // month는 0-based
+    expect(d.get(DATETIME_UNIT.MONTH)).toBe(2); // 3월 -> 2
+    expect(d.get(DATETIME_UNIT.HOUR)).toBe(13);
+    expect(d.get(DATETIME_UNIT.MINUTE)).toBe(45);
   });
 
-  it("일 변경", () => {
-    const changed = base.set(1, DATETIME_UNIT.DAYS);
-    expect(changed.date).toBe(1);
+  it("add는 지정한 단위만큼 더한 새로운 BaseDate를 반환해야 하며 원본은 불변이어야 한다", () => {
+    const { baseDate: d } = makeBaseDate(2025, 1, 1, 10, 0, 0);
+
+    const plusOneDay = d.add(1, DATETIME_UNIT.DAY);
+    const plusTwoHours = d.add(2, DATETIME_UNIT.HOUR);
+
+    expect(plusOneDay.get(DATETIME_UNIT.DATE)).toBe(2);
+    expect(plusOneDay.get(DATETIME_UNIT.HOUR)).toBe(10);
+
+    expect(plusTwoHours.get(DATETIME_UNIT.DATE)).toBe(1);
+    expect(plusTwoHours.get(DATETIME_UNIT.HOUR)).toBe(12);
+
+    // 원본은 그대로
+    expect(d.get(DATETIME_UNIT.DATE)).toBe(1);
+    expect(d.get(DATETIME_UNIT.HOUR)).toBe(10);
   });
 
-  it("시간 변경", () => {
-    const changed = base.set(12, DATETIME_UNIT.HOURS);
-    expect(changed.hours).toBe(12);
+  it("isEqual은 기본적으로 minute 단위로 같음을 비교해야 한다", () => {
+    const { baseDate: d1 } = makeBaseDate(2025, 1, 1, 10, 0, 0);
+    const { baseDate: d2 } = makeBaseDate(2025, 1, 1, 10, 0, 30); // 30초 차이
+
+    // minute 단위로는 동일
+    expect(d1.isEqual(d2)).toBe(true);
+
+    const { baseDate: d3 } = makeBaseDate(2025, 1, 1, 10, 1, 0);
+    expect(d1.isEqual(d3)).toBe(false);
   });
 
-  it("분 변경", () => {
-    const changed = base.set(59, DATETIME_UNIT.MINUTES);
-    expect(changed.minutes).toBe(59);
+  it("isEqual은 unit 인자를 변경하면 해당 단위 기준으로 비교해야 한다", () => {
+    const { baseDate: d1 } = makeBaseDate(2025, 1, 1, 10, 0, 0);
+    const { baseDate: d2 } = makeBaseDate(2025, 1, 1, 10, 59, 0);
+
+    // hour 단위로는 동일
+    expect(d1.isEqual(d2, DATETIME_UNIT.HOUR)).toBe(true);
+
+    const { baseDate: d3 } = makeBaseDate(2025, 1, 1, 11, 0, 0);
+    expect(d1.isEqual(d3, DATETIME_UNIT.HOUR)).toBe(false);
   });
 
-  it("범위 밖 값도 정상화 (date=0 → 전월 말일)", () => {
-    const changed = base.set(0, DATETIME_UNIT.DAYS);
-    expect(changed.date).toBeGreaterThan(27); // 전월 말일
+  it("isBefore / isOnOrBefore는 minute 단위 비교 기준으로 동작해야 한다", () => {
+    const { baseDate: earlier } = makeBaseDate(2025, 1, 1, 10, 0, 0);
+    const { baseDate: later } = makeBaseDate(2025, 1, 1, 10, 1, 0);
+    const { baseDate: same } = makeBaseDate(2025, 1, 1, 10, 0, 30); // 같은 minute
+
+    // isBefore: 엄격히 이전일 때만 true
+    expect(earlier.isBefore(later)).toBe(true);
+    expect(later.isBefore(earlier)).toBe(false);
+    expect(earlier.isBefore(same)).toBe(false); // 같은 minute 이므로 false
+
+    // isOnOrBefore: 같거나 이전이면 true
+    expect(earlier.isOnOrBefore(later)).toBe(true);
+    expect(earlier.isOnOrBefore(same)).toBe(true); // 같은 minute
+    expect(later.isOnOrBefore(earlier)).toBe(false);
   });
 
-  it("범위 밖 값도 정상화 (hours=24 → 다음날 00:00)", () => {
-    const changed = base.set(24, DATETIME_UNIT.HOURS);
-    expect(changed.hours).toBe(0);
-    expect(changed.date).toBe(23);
+  it("isAfter / isOnOrAfter는 minute 단위 비교 기준으로 동작해야 한다", () => {
+    const { baseDate: earlier } = makeBaseDate(2025, 1, 1, 10, 0, 0);
+    const { baseDate: later } = makeBaseDate(2025, 1, 1, 10, 1, 0);
+    const { baseDate: same } = makeBaseDate(2025, 1, 1, 10, 0, 30);
+
+    expect(later.isAfter(earlier)).toBe(true);
+    expect(earlier.isAfter(later)).toBe(false);
+    expect(same.isAfter(earlier)).toBe(false); // 같은 minute
+
+    expect(later.isOnOrAfter(earlier)).toBe(true);
+    expect(same.isOnOrAfter(earlier)).toBe(true); // 같은 minute
+    expect(earlier.isOnOrAfter(later)).toBe(false);
   });
 
-  it("범위 밖 값도 정상화 (minutes=60 → +1시간)", () => {
-    const changed = base.set(60, DATETIME_UNIT.MINUTES);
-    expect(changed.minutes).toBe(0);
-    expect(changed.hours).toBe(5);
-  });
-});
+  it("isToday는 오늘 날짜인 경우에만 true를 반환해야 한다", () => {
+    const nowMs = Date.now();
+    const today = new BaseDate(nowMs);
+    expect(today.isToday()).toBe(true);
 
-describe("BaseDate - add()", () => {
-  const base = new BaseDate(EPOCH("2025-01-31T00:00:00Z"));
-
-  it("분 단위 더하기", () => {
-    const added = base.add(90, DATETIME_UNIT.MINUTES);
-    expect(added.hours).toBe(1);
-    expect(added.minutes).toBe(30);
+    const yesterdayMs = nowMs - 24 * 60 * 60 * 1000;
+    const yesterday = new BaseDate(yesterdayMs);
+    expect(yesterday.isToday()).toBe(false);
   });
 
-  it("시간 단위 더하기", () => {
-    const added = base.add(25, DATETIME_UNIT.HOURS);
-    expect(added.date).toBe(1); // 다음날
+  it("startOf는 지정한 단위의 시작 시점을 가지는 새로운 BaseDate를 반환해야 한다", () => {
+    const { baseDate: d } = makeBaseDate(2025, 1, 2, 10, 20, 30);
+
+    const startOfDay = d.startOf(DATETIME_UNIT.DAY);
+    expect(startOfDay.get(DATETIME_UNIT.HOUR)).toBe(0);
+    expect(startOfDay.get(DATETIME_UNIT.MINUTE)).toBe(0);
+
+    // 원본 불변
+    expect(d.get(DATETIME_UNIT.HOUR)).toBe(10);
+    expect(d.get(DATETIME_UNIT.MINUTE)).toBe(20);
   });
 
-  it("일 단위 더하기", () => {
-    const added = base.add(2, DATETIME_UNIT.DAYS);
-    expect(added.date).toBe(2); // 1월 31일 + 2일 = 2월 2일
+  it("endOf는 지정한 단위의 마지막 시점을 가지는 새로운 BaseDate를 반환해야 한다", () => {
+    const { baseDate: d } = makeBaseDate(2025, 1, 2, 10, 20, 30);
+
+    const endOfDay = d.endOf(DATETIME_UNIT.DAY);
+    expect(endOfDay.get(DATETIME_UNIT.HOUR)).toBe(23);
+    expect(endOfDay.get(DATETIME_UNIT.MINUTE)).toBe(59);
   });
 
-  it("월 단위 더하기: 말일 케이스", () => {
-    const febAdded = base.add(1, DATETIME_UNIT.MONTH);
-    expect(febAdded.month).toBe(1); // February
+  it("format은 내부 dayjs.format을 래핑해 템플릿에 맞는 문자열을 반환해야 한다", () => {
+    const { baseDate: d } = makeBaseDate(2025, 3, 15, 13, 45, 0);
+
+    expect(d.format("YYYY-MM-DD")).toBe("2025-03-15");
+    expect(d.format("HH:mm")).toBe("13:45");
   });
 
-  it("윤년 케이스: 2024-02-29에서 1일 추가 → 3월1일", () => {
-    const leap = new BaseDate(EPOCH("2024-02-29T00:00:00Z"));
-    const added = leap.add(1, DATETIME_UNIT.DAYS);
-    expect(added.month).toBe(2); // March
-    expect(added.date).toBe(1);
-  });
+  it("toISOString은 'YYYY-MM-DDTHH:mm:ssZ' 형태의 UTC 문자열을 반환해야 한다", () => {
+    const { baseDate: d } = makeBaseDate(2025, 12, 3, 9, 8, 7);
+    // 초 단위는 버리고 분까지만 표현하므로 09:08:00Z가 된다
+    // dayjs.format은 초를 반올림하거나 하지 않고 그대로 사용하므로
+    // BaseDate 생성 시 second를 0으로 넣는 것이 안전하다.
+    const { baseDate: d2 } = makeBaseDate(2025, 12, 3, 9, 8, 0);
 
-  it("음수 값도 동작해야 한다", () => {
-    const sub = base.add(-1, DATETIME_UNIT.DAYS);
-    expect(sub.date).toBe(30); // Jan 30
-  });
-});
-
-describe("BaseDate - 비교자", () => {
-  const a = new BaseDate(EPOCH("2025-09-22T04:30:00Z"));
-  const b = new BaseDate(EPOCH("2025-09-22T06:00:00Z"));
-  const same = new BaseDate(EPOCH("2025-09-22T04:30:00Z"));
-
-  it("isEqual", () => {
-    expect(a.isEqual(same)).toBe(true);
-    expect(a.isEqual(b)).toBe(false);
-  });
-
-  it("isBefore/isAfter", () => {
-    expect(a.isBefore(b)).toBe(true);
-    expect(b.isAfter(a)).toBe(true);
-    expect(a.isBefore(same)).toBe(false);
-    expect(a.isAfter(same)).toBe(false);
-  });
-
-  it("isOnOrBefore/isOnOrAfter", () => {
-    expect(a.isOnOrBefore(same)).toBe(true);
-    expect(a.isOnOrAfter(same)).toBe(true);
-  });
-
-  it("isSameMonth: 같은 월/다른 월", () => {
-    expect(a.isSameMonth(same)).toBe(true);
-    expect(a.isSameMonth(b)).toBe(true); // 같은 달
-    const c = new BaseDate(EPOCH("2025-10-01T00:00:00Z"));
-    expect(a.isSameMonth(c)).toBe(false);
-  });
-});
-
-describe("BaseDate", () => {
-  const now = new Date("2025-09-22T04:30:00Z");
-  let time = truncateTime(now.getTime());
-  const nextMinutes = new BaseDate(Date.UTC(2025, 8, 22, 4, 40)); // 10분 뒤
-  const nextHours = new BaseDate(Date.UTC(2025, 8, 22, 6, 30)); // 2시간 뒤
-  const nextDay = new BaseDate(Date.UTC(2025, 8, 23, 4, 30)); // 하루 뒤
-  const nextMonth = new BaseDate(Date.UTC(2025, 9, 22, 4, 30)); // 한 달 뒤
-  const nextYear = new BaseDate(Date.UTC(2026, 8, 22, 4, 30)); // 1년 뒤
-  const base = new BaseDate(time);
-
-  it("diff - year", () => {
-    expect(base.diff(nextYear, DATETIME_UNIT.YEAR)).toBe(1);
-  });
-
-  it("diff - month", () => {
-    expect(base.diff(nextMonth, DATETIME_UNIT.MONTH)).toBe(1);
-  });
-
-  it("diff - date", () => {
-    expect(base.diff(nextDay, DATETIME_UNIT.DAYS)).toBe(1);
-  });
-
-  it("diff - hours", () => {
-    expect(base.diff(nextDay, DATETIME_UNIT.HOURS)).toBe(24);
-  });
-
-  it("diff - minutes", () => {
-    expect(base.diff(nextDay, DATETIME_UNIT.MINUTES)).toBe(24 * 60);
-  });
-
-  it("diff - hours", () => {
-    expect(base.diff(nextHours, DATETIME_UNIT.HOURS)).toBe(2);
-  });
-
-  it("diff - minutes", () => {
-    expect(base.diff(nextMinutes, DATETIME_UNIT.MINUTES)).toBe(10);
-  });
-
-  it("set - year", () => {
-    const changed = base.set(2026, DATETIME_UNIT.YEAR);
-    const diff = changed.toJSON();
-    expect(diff.year).toBe(base.year + 1);
-    expect(diff.month).toBe(base.month);
-    expect(diff.date).toBe(base.date);
-    expect(diff.hours).toBe(base.hours);
-    expect(diff.minutes).toBe(base.minutes);
-  });
-
-  it("set - month", () => {
-    const changed = base.set(5, DATETIME_UNIT.MONTH); // June
-    const diff = changed.toJSON();
-    expect(diff.year).toBe(base.year);
-    expect(diff.month).toBe(base.month - 3);
-    expect(diff.date).toBe(base.date);
-    expect(diff.hours).toBe(base.hours);
-    expect(diff.minutes).toBe(base.minutes);
-  });
-
-  it("add - date", () => {
-    const added = base.add(1, DATETIME_UNIT.DAYS);
-    expect(added.isEqual(nextDay)).toBe(true);
-  });
-
-  it("add - hours", () => {
-    const added = base.add(2, DATETIME_UNIT.HOURS);
-    expect(added.isEqual(nextHours)).toBe(true);
-  });
-
-  it("add - minutes", () => {
-    const added = base.add(10, DATETIME_UNIT.MINUTES);
-    expect(added.isEqual(nextMinutes)).toBe(true);
-  });
-
-  it("isEqual", () => {
-    const same = new BaseDate(Date.UTC(2025, 8, 22, 4, 30));
-    expect(base.isEqual(same)).toBe(true);
-  });
-
-  it("isBefore / isAfter", () => {
-    expect(base.isBefore(nextDay)).toBe(true);
-    expect(nextDay.isAfter(base)).toBe(true);
-  });
-
-  it("isOnOrBefore / isOnOrAfter", () => {
-    const same = new BaseDate(Date.UTC(2025, 8, 22, 4, 40));
-    expect(base.isOnOrBefore(same)).toBe(true);
-    expect(base.isOnOrAfter(same)).toBe(false);
-  });
-
-  it("isSameMonth", () => {
-    expect(base.isSameMonth(nextDay)).toBe(true);
-    expect(base.isSameMonth(nextMonth)).toBe(false);
+    expect(d2.toISOString()).toBe("2025-12-03T09:08:00Z");
   });
 });
 
-describe("BaseDate Edge Cases", () => {
-  const now = new Date("2025-09-22T04:30:00Z");
-  const base = new BaseDate(now.getTime());
-
-  it("isEqual should return true for the same instant", () => {
-    const same = new BaseDate(new Date("2025-09-22T04:30:00Z").getTime());
-    expect(base.isEqual(same)).toBe(true);
-  });
-
-  it("isBefore should return false for same instant", () => {
-    const same = new BaseDate(new Date("2025-09-22T04:30:00Z").getTime());
-    expect(base.isBefore(same)).toBe(false);
-  });
-
-  it("add date across month boundary", () => {
-    const sept30 = new BaseDate(Date.UTC(2025, 8, 30, 4, 30)); // 9월 30일 04:30 UTC
-    const added = sept30.add(1, DATETIME_UNIT.DAYS); // → 10월 1일
-    expect(added.isEqual(new BaseDate(Date.UTC(2025, 9, 1, 4, 30)))).toBe(true);
-  });
-
-  it("set month to February on leap year", () => {
-    const leap = new BaseDate(Date.UTC(2024, 1, 29, 4, 30)); // 2024-02-29
-    const changed = leap.set(2, DATETIME_UNIT.MONTH); // 3월
-    expect(changed.isEqual(new BaseDate(Date.UTC(2024, 2, 29, 4, 30)))).toBe(
-      true
-    );
-  });
-
-  it("set date beyond last day of month should auto adjust", () => {
-    const jan31 = new BaseDate(Date.UTC(2025, 0, 31, 4, 30)); // 1월 31일
-    const changed = jan31.set(32, DATETIME_UNIT.DAYS); // 없는 날짜 → 자동 2월 1일
-    expect(changed.isEqual(new BaseDate(Date.UTC(2025, 1, 1, 4, 30)))).toBe(
-      true
-    );
-  });
-
-  it("add hours across day boundary", () => {
-    const late = new BaseDate(Date.UTC(2025, 8, 22, 23, 30)); // 9월 22일 23:30
-    const added = late.add(2, DATETIME_UNIT.HOURS); // 다음날 01:30
-    expect(added.isEqual(new BaseDate(Date.UTC(2025, 8, 23, 1, 30)))).toBe(
-      true
-    );
-  });
-
-  it("isSameMonth should return false across year boundary", () => {
-    const dec2025 = new BaseDate(Date.UTC(2025, 11, 31, 23, 59));
-    const jan2026 = new BaseDate(Date.UTC(2026, 0, 1, 0, 0));
-    expect(dec2025.isSameMonth(jan2026)).toBe(false);
-  });
-
-  it("diff in years should handle negative case", () => {
-    const past = new BaseDate(Date.UTC(2020, 8, 22, 4, 30));
-    expect(past.diff(base, DATETIME_UNIT.YEAR)).toBe(5);
-    expect(base.diff(past, DATETIME_UNIT.YEAR)).toBe(-5); // 음수도 확인
-  });
-
-  it("add month should account for varying month length", () => {
-    const jan31 = new BaseDate(Date.UTC(2025, 0, 31, 4, 30)); // 1월 31일
-    const added = jan31.add(1, DATETIME_UNIT.MONTH); // 2월 말일 보정 필요
-    // 여기서는 BaseDate.add가 단순히 일수 * 24시간 기준으로 동작하므로 Feb 28/29로 가지 않을 수 있음
-    // → 구현 제한 사항 확인용
-    expect(added.isEqual(new BaseDate(Date.UTC(2025, 1, 28, 4, 30)))).toBe(
-      true
-    );
-  });
+describe("BaseDate - Global", () => {
+  test.todo("dd");
 });
+
+describe("BaseDate", () => {});

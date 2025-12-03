@@ -1,4 +1,4 @@
-import { DateTime } from "./date";
+import { DateTime, DATETIME_UNIT } from "./date";
 
 export const ENTRY_PRIORITY = {
   P0: 0,
@@ -79,7 +79,7 @@ export class Entry {
   get duration() {
     if (!this.endDate || !this.startDate) return 0;
 
-    return this.endDate.diff(this.startDate, "minutes") / 5;
+    return this.endDate.diff(this.startDate, DATETIME_UNIT.MINUTE) / 5;
   }
 
   /**
