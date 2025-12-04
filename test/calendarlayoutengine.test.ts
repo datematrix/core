@@ -1,7 +1,7 @@
-import { BaseDate, DateTime, WEEK_STARTS_ON } from "../src/date";
+import { DateTime, DATETIME_UNIT, WEEK_STARTS_ON } from "../src/date";
 import { IndexedEntry } from "../src/engine";
 import { CalendarLayoutEngine } from "../src/layout";
-import { describe, expect, it } from "vitest"; // <-- **
+import { describe, expect, it, test } from "vitest"; // <-- **
 
 const createMockEntry = (
   startDate: DateTime,
@@ -26,8 +26,8 @@ describe("CalendarLayoutEngine", () => {
     const entries: IndexedEntry[] = [];
 
     // Entry 1
-    const entry1_startDate = thisWeek.startDate.add(-3, "days");
-    const entry1_endDate = thisWeek.startDate.add(3, "days");
+    const entry1_startDate = thisWeek.startDate.add(-3, DATETIME_UNIT.DAY);
+    const entry1_endDate = thisWeek.startDate.add(3, DATETIME_UNIT.DAY);
     const entry1 = createMockEntry(
       entry1_startDate,
       entry1_endDate,
@@ -38,7 +38,7 @@ describe("CalendarLayoutEngine", () => {
 
     // Entry 2
     const entry2_startDate = thisWeek.startDate;
-    const entry2_endDate = thisWeek.startDate.add(4, "days");
+    const entry2_endDate = thisWeek.startDate.add(4, DATETIME_UNIT.DAY);
     const entry2 = createMockEntry(
       entry2_startDate,
       entry2_endDate,
@@ -48,8 +48,8 @@ describe("CalendarLayoutEngine", () => {
     entries.push(entry2);
 
     // Entry 3
-    const entry3_startDate = thisWeek.startDate.add(4, "days");
-    const entry3_endDate = thisWeek.startDate.add(4, "days");
+    const entry3_startDate = thisWeek.startDate.add(4, DATETIME_UNIT.DAY);
+    const entry3_endDate = thisWeek.startDate.add(4, DATETIME_UNIT.DAY);
     const entry3 = createMockEntry(
       entry3_startDate,
       entry3_endDate,
@@ -71,7 +71,7 @@ describe("CalendarLayoutEngine", () => {
 
     // Entry 5
     const entry5_startDate = thisWeek.startDate;
-    const entry5_endDate = thisWeek.endDate.add(3, "days");
+    const entry5_endDate = thisWeek.endDate.add(3, DATETIME_UNIT.DAY);
     const entry5 = createMockEntry(
       entry5_startDate,
       entry5_endDate,
@@ -81,8 +81,8 @@ describe("CalendarLayoutEngine", () => {
     entries.push(entry5);
 
     // Entry 6
-    const entry6_startDate = thisWeek.startDate.add(-3, "days");
-    const entry6_endDate = thisWeek.endDate.add(3, "days");
+    const entry6_startDate = thisWeek.startDate.add(-3, DATETIME_UNIT.DAY);
+    const entry6_endDate = thisWeek.endDate.add(3, DATETIME_UNIT.DAY);
     const entry6 = createMockEntry(
       entry6_startDate,
       entry6_endDate,
@@ -92,8 +92,8 @@ describe("CalendarLayoutEngine", () => {
     entries.push(entry6);
 
     // Entry 7
-    const entry7_startDate = thisWeek.startDate.add(2, "days");
-    const entry7_endDate = thisWeek.endDate.add(3, "days");
+    const entry7_startDate = thisWeek.startDate.add(2, DATETIME_UNIT.DAY);
+    const entry7_endDate = thisWeek.endDate.add(3, DATETIME_UNIT.DAY);
     const entry7 = createMockEntry(
       entry7_startDate,
       entry7_endDate,
@@ -103,7 +103,7 @@ describe("CalendarLayoutEngine", () => {
     entries.push(entry7);
 
     // Entry 8
-    const entry8_startDate = thisWeek.startDate.add(5, "days");
+    const entry8_startDate = thisWeek.startDate.add(5, DATETIME_UNIT.DAY);
     const entry8_endDate = thisWeek.endDate;
     const entry8 = createMockEntry(
       entry8_startDate,
@@ -114,8 +114,8 @@ describe("CalendarLayoutEngine", () => {
     entries.push(entry8);
 
     // Entry 9
-    const entry9_startDate = thisWeek.startDate.add(-4, "days");
-    const entry9_endDate = thisWeek.endDate.add(3, "days");
+    const entry9_startDate = thisWeek.startDate.add(-4, DATETIME_UNIT.DAY);
+    const entry9_endDate = thisWeek.endDate.add(3, DATETIME_UNIT.DAY);
     const entry9 = createMockEntry(
       entry9_startDate,
       entry9_endDate,
@@ -125,6 +125,5 @@ describe("CalendarLayoutEngine", () => {
     entries.push(entry9);
 
     const result = engine.compute(entries, thisWeek);
-    console.log(result);
   });
 });
