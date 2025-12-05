@@ -155,8 +155,35 @@ export class DateTime {
    */
   diff(
     datetime: DateTime,
-    unit: Exclude<DateTimeUnit, "date"> = DATETIME_UNIT.DAY
+    unit: Exclude<DateTimeUnit, "date" | "week"> = DATETIME_UNIT.DAY
   ): number {
+    if (unit === DATETIME_UNIT.DAY) {
+      const hours = this._view.diff(datetime._view, DATETIME_UNIT.HOUR);
+      if (Math.abs(hours) < 24) {
+        const dayA = this._view.get(DATETIME_UNIT.DAY);
+        const dayB = datetime._view.get(DATETIME_UNIT.DAY);
+        return dayA - dayB;
+      }
+    }
+
+    if (unit === DATETIME_UNIT.MONTH) {
+      const days = this.diff(datetime, DATETIME_UNIT.DAY);
+      if (Math.abs(days) < 31) {
+        const monthA = this._view.get(DATETIME_UNIT.MONTH);
+        const monthB = datetime._view.get(DATETIME_UNIT.MONTH);
+        return monthA - monthB;
+      }
+    }
+
+    if (unit === DATETIME_UNIT.YEAR) {
+      const months = this.diff(datetime, DATETIME_UNIT.MONTH);
+      if (Math.abs(months) < 12) {
+        const yearA = this._view.get(DATETIME_UNIT.YEAR);
+        const yearB = datetime._view.get(DATETIME_UNIT.YEAR);
+        return yearA - yearB;
+      }
+    }
+
     return this._view.diff(datetime._view, unit);
   }
 
