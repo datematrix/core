@@ -4,6 +4,7 @@ import {
   type EntryConfig,
   type EntryWithDuration,
 } from "./entry";
+import { sortEntries } from "./utils";
 
 export interface EngineEntryRef {
   id: string;
@@ -20,10 +21,12 @@ export class CalendarEngine {
   }
 
   search(range: Duration): Array<EngineEntryRef> {
-    return this.state.filter((entry) => {
-      const entryRange = new Duration(entry.startDate, entry.endDate);
-      return entryRange.isOverlap(range);
-    });
+    return this.state
+      .filter((entry) => {
+        const entryRange = new Duration(entry.startDate, entry.endDate);
+        return entryRange.isOverlap(range);
+      })
+      .sort(sortEntries);
   }
 
   delete(id: EntryConfig["id"]) {
