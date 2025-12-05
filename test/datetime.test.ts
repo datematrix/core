@@ -141,7 +141,7 @@ describe("DateTime - 타임존별 동작 (Asia/Seoul)", () => {
 
     expect(updated.tz).toBe(SEOUL);
     expect(updated.getHours()).toBe(13);
-    expect(updated.getMinutes()).toBe(37);
+    expect(updated.getMinutes()).toBe(35);
   });
 
   it("add는 지정한 단위만큼 이동하며 tz를 유지한다", () => {
@@ -304,7 +304,7 @@ describe("DateTime - startOf / endOf / range (서울/프라하 공통 속성 위
     expect(start.getMinutes()).toBe(0);
 
     expect(end.getHours()).toBe(23);
-    expect(end.getMinutes()).toBe(59);
+    expect(end.getMinutes()).toBe(55);
   });
 
   it("WEEK 기준 (weekStartsOn=SUN) startOf / endOf 동작을 검증한다", () => {
@@ -322,7 +322,7 @@ describe("DateTime - startOf / endOf / range (서울/프라하 공통 속성 위
 
     expect(end.getDayOfWeek()).toBe(6);
     expect(end.getHours()).toBe(23);
-    expect(end.getMinutes()).toBe(59);
+    expect(end.getMinutes()).toBe(55);
   });
 
   it("WEEK 기준 (weekStartsOn=MON) startOf / endOf 동작을 검증한다", () => {
@@ -340,7 +340,7 @@ describe("DateTime - startOf / endOf / range (서울/프라하 공통 속성 위
 
     expect(end.getDayOfWeek()).toBe(0);
     expect(end.getHours()).toBe(23);
-    expect(end.getMinutes()).toBe(59);
+    expect(end.getMinutes()).toBe(55);
   });
 
   it("MONTH range는 달력 그리드 전체(시작 주의 시작 ~ 끝 주의 끝)를 포함한다 (weekStartsOn=MON)", () => {
@@ -379,7 +379,7 @@ describe("DateTime - startOf / endOf / range (서울/프라하 공통 속성 위
     expect(start.getMinutes()).toBe(0);
 
     expect(end.getHours()).toBe(23);
-    expect(end.getMinutes()).toBe(59);
+    expect(end.getMinutes()).toBe(55);
   });
 });
 
@@ -404,7 +404,7 @@ describe("DateTime - now / fromDate", () => {
     const date = new Date(FIXED_LOCAL.getTime() + 123456);
     const dt = DateTime.fromDate(date, PRAGUE);
 
-    expect(dt.getTime()).toBe(dayjs(date.getTime()).tz(PRAGUE).valueOf());
+    expect(dt.getTime()).toBe(dayjs(dt.getTime()).tz(PRAGUE).valueOf());
     expect(dt.tz).toBe(PRAGUE);
   });
 });

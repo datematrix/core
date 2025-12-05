@@ -38,7 +38,7 @@ export class CalendarLayoutEngine {
 
       while (
         level < lastEndOfLevel.length &&
-        startPos <= lastEndOfLevel[level]
+        startPos < lastEndOfLevel[level]
       ) {
         level += 1;
       }
