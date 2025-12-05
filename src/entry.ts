@@ -120,6 +120,26 @@ export class Entry<TConfig extends EntryConfig> {
   }
 
   /**
+   * Entry를 업데이트하는 기능을 제공합니다.
+   * @param config - Entry에 필요한 정보
+   */
+  update(config: Partial<EntryWithoutDuration>): UnscheduledEntry;
+  update(config: Partial<EntryWithDuration>): ScheduledEntry;
+  update(
+    config: Partial<EntryFactoryConfig>
+  ): ScheduledEntry | UnscheduledEntry {
+    if (config.startDate === undefined) {
+      return Entry.factory({
+        ...this._config,
+        startDate: undefined,
+        endDate: undefined,
+        allDay: undefined,
+      });
+    }
+    return Entry.factory({ ...this._config, ...config });
+  }
+
+  /**
    * Entry 정보를 JSON으로 반환합니다.
    */
   toJSON() {
@@ -204,32 +224,6 @@ export class ScheduledEntry extends Entry<EntryWithDuration> {
   }
 
   /**
-   * Entry를 업데이트하는 기능을 제공합니다.
-   * @param config - Entry에 필요한 정보
-   */
-  update(config: Partial<EntryWithoutDuration>): UnscheduledEntry;
-  update(
-    config: Omit<EntryWithDuration, "startDate" | "endDate" | "allDay"> & {
-      startDate?: DateTime;
-      endDate?: DateTime;
-      allDay?: boolean;
-    }
-  ): ScheduledEntry;
-  update(
-    config: Partial<EntryFactoryConfig>
-  ): ScheduledEntry | UnscheduledEntry {
-    if (config.startDate === undefined) {
-      return Entry.factory({
-        ...this._config,
-        startDate: undefined,
-        endDate: undefined,
-        allDay: undefined,
-      });
-    }
-    return Entry.factory({ ...this._config, ...config });
-  }
-
-  /**
    * Entry를 시작하는 날짜 및 시간
    */
   get startDate(): DateTime {
@@ -264,35 +258,5 @@ export class ScheduledEntry extends Entry<EntryWithDuration> {
 export class UnscheduledEntry extends Entry<EntryWithoutDuration> {
   constructor(config: EntryWithoutDuration) {
     super(config);
-  }
-
-  /**
-   * Entry를 업데이트하는 기능을 제공합니다.
-   * @param config - Entry에 필요한 정보
-   */
-  update(config: Partial<EntryWithoutDuration>): UnscheduledEntry;
-  update(
-    config: Omit<EntryWithDuration, "startDate" | "endDate" | "allDay"> & {
-      startDate?: DateTime;
-      endDate?: DateTime;
-      allDay?: boolean;
-    }
-  ): ScheduledEntry;
-  update(
-    config: Partial<EntryFactoryConfig>
-  ): ScheduledEntry | UnscheduledEntry {
-    if (config.startDate === undefined) {
-      return Entry.factory({
-        ...this._config,
-        startDate: undefined,
-        endDate: undefined,
-      });
-    }
-
-    return Entry.factory({
-      ...this._config,
-      ...config,
-      startDate: config.startDate,
-    });
   }
 }
