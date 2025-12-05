@@ -196,7 +196,7 @@ export class Entry<TConfig extends EntryConfig> {
   }
 }
 
-class ScheduledEntry extends Entry<EntryWithDuration> {
+export class ScheduledEntry extends Entry<EntryWithDuration> {
   constructor(config: EntryWithDuration) {
     super(config);
   }
@@ -254,7 +254,7 @@ class ScheduledEntry extends Entry<EntryWithDuration> {
   }
 }
 
-class UnscheduledEntry extends Entry<EntryWithoutDuration> {
+export class UnscheduledEntry extends Entry<EntryWithoutDuration> {
   constructor(config: EntryWithoutDuration) {
     super(config);
   }

@@ -11,6 +11,8 @@ export {
   type EntryWithoutDuration,
   type EntryFactoryConfig,
   Entry,
+  ScheduledEntry,
+  UnscheduledEntry,
   ENTRY_PRIORITY,
   ENTRY_STATUS,
   ENTRY_TYPE,
