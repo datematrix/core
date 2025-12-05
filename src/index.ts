@@ -7,9 +7,9 @@ export {
   type WeekStartsOnType,
 } from "./date";
 export {
-  type EntryConfig,
   type EntryWithDuration,
   type EntryWithoutDuration,
+  type EntryFactoryConfig,
   Entry,
   ENTRY_PRIORITY,
   ENTRY_STATUS,

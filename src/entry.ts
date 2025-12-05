@@ -55,7 +55,7 @@ export interface EntryWithoutDuration extends BaseEntryConfig {
   endDate?: undefined;
 }
 
-interface EntryFactoryConfig extends BaseEntryConfig {
+export interface EntryFactoryConfig extends BaseEntryConfig {
   startDate?: DateTime;
   endDate?: DateTime;
   allDay?: boolean;
