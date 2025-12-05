@@ -77,13 +77,19 @@ export class Entry<TConfig extends EntryConfig> {
 
   static factory(config: EntryWithoutDuration): UnscheduledEntry;
   static factory(
-    config: Omit<EntryWithDuration, "endDate"> & { endDate?: DateTime }
+    config: Omit<EntryWithDuration, "endDate" | "allDay"> & {
+      endDate?: DateTime;
+      allDay?: boolean;
+    }
   ): ScheduledEntry;
   static factory(
     config: EntryFactoryConfig
   ): ScheduledEntry | UnscheduledEntry {
     if (config.startDate && config.endDate) {
-      return new ScheduledEntry(config as EntryWithDuration);
+      return new ScheduledEntry({
+        ...config,
+        allDay: config.allDay ?? false,
+      } as EntryWithDuration);
     }
 
     if (!config.startDate && !config.endDate) {
@@ -104,6 +110,7 @@ export class Entry<TConfig extends EntryConfig> {
       return new ScheduledEntry({
         ...config,
         endDate: end,
+        allDay: config.allDay ?? false,
       } as EntryWithDuration);
     }
 
