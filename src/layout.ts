@@ -1,5 +1,6 @@
 import { type Duration } from "./date";
 import type { EngineEntryRef } from "./engine";
+import { sortEntriesWithDuration } from "./utils";
 
 export interface LayoutState {
   id: string;
@@ -9,24 +10,13 @@ export interface LayoutState {
 }
 
 export class CalendarLayoutEngine {
-  private sortEntries<T extends EngineEntryRef>(entries: T[]) {
-    return [...entries].sort((a, b) => {
-      if (a.startDate!.getTime() === b.startDate!.getTime()) {
-        return b.endDate!.getTime() - a.endDate!.getTime();
-      }
-
-      return a.startDate!.getTime() - b.startDate!.getTime();
-    });
-  }
-
   compute<T extends EngineEntryRef>(entries: T[], duration: Duration) {
-    const sorted = this.sortEntries(entries);
+    const sortEntries = sortEntriesWithDuration(duration);
+    const sorted = entries.sort(sortEntries);
 
     const state = new Map<string, LayoutState>();
     const lastEndOfLevel: Array<number> = [];
     const rangeLength = duration.toArray().length;
-
-    console.log(sorted);
 
     for (const span of sorted) {
       let level = 0;

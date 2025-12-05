@@ -4,11 +4,12 @@ import {
   type EntryConfig,
   type EntryWithDuration,
 } from "./entry";
+import { sortEntries } from "./utils";
 
 export interface EngineEntryRef {
   id: string;
-  startDate?: DateTime;
-  endDate?: DateTime;
+  startDate: DateTime;
+  endDate: DateTime;
   allDay: boolean;
 }
 
@@ -22,30 +23,10 @@ export class CalendarEngine {
   search(range: Duration): Array<EngineEntryRef> {
     return this.state
       .filter((entry) => {
-        if (!entry.startDate) return false;
-
-        if (entry.startDate && !entry.endDate)
-          return entry.startDate.isBetween(range);
-
-        if (entry.startDate && entry.endDate) {
-          const entryRange = new Duration(entry.startDate, entry.endDate);
-          return entryRange.isOverlap(range);
-        }
-
-        throw Error("Not Implemented");
+        const entryRange = new Duration(entry.startDate, entry.endDate);
+        return entryRange.isOverlap(range);
       })
-      .sort((a, b) => {
-        if (a.allDay && !b.allDay) return -1;
-        if (!a.allDay && b.allDay) return 1;
-        const startPos = a.startDate!.getTime() - b.startDate!.getTime();
-        if (startPos !== 0) return startPos;
-
-        if (!a.endDate && !b.endDate) return 0;
-        if (a.endDate && !b.endDate) return -1;
-        if (!a.endDate && b.endDate) return 1;
-
-        return b.endDate!.getTime() - a.endDate!.getTime();
-      });
+      .sort(sortEntries);
   }
 
   delete(id: EntryConfig["id"]) {
