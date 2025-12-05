@@ -1,5 +1,6 @@
 import { DateTime, DATETIME_UNIT, WEEK_STARTS_ON } from "../src/date";
 import { EngineEntryRef } from "../src/engine";
+import { ENTRY_PRIORITY, ENTRY_STATUS, ENTRY_TYPE } from "../src/entry";
 import { CalendarLayoutEngine } from "../src/layout";
 import { describe, expect, it, test } from "vitest"; // <-- **
 
@@ -19,10 +20,10 @@ const createMockEntry = (
 };
 
 describe("CalendarLayoutEngine", () => {
+  const now = DateTime.now();
+  const thisWeek = now.range("week", WEEK_STARTS_ON.MON);
   it("UTC ms 입력을 정확히 분해해야 한다", () => {
     const engine = new CalendarLayoutEngine();
-    const now = DateTime.now();
-    const thisWeek = now.range("week", WEEK_STARTS_ON.MON);
     const entries: EngineEntryRef[] = [];
 
     // Entry 1
@@ -125,5 +126,70 @@ describe("CalendarLayoutEngine", () => {
     entries.push(entry9);
 
     const result = engine.compute(entries, thisWeek);
+  });
+
+  it("test", () => {
+    const engine = new CalendarLayoutEngine();
+    const now = DateTime.now();
+    const thisWeek = now.range("week", WEEK_STARTS_ON.MON);
+    const createMockEntry = (
+      id: string,
+      startDate: DateTime = DateTime.now(),
+      endDate: DateTime = DateTime.now().add(1, "day"),
+      allDay: boolean = false
+    ) => {
+      return {
+        id,
+        title: `Entry ${id}`,
+        startDate,
+        endDate,
+        priority: ENTRY_PRIORITY.P2,
+        tags: [],
+        status: ENTRY_STATUS.DEFAULT,
+        allDay,
+        completed: false,
+        type: ENTRY_TYPE.EVENT,
+      };
+    };
+
+    const entries = [
+      createMockEntry("1"),
+      createMockEntry("2"),
+      createMockEntry("3"),
+      createMockEntry(
+        "4",
+        DateTime.now(),
+        DateTime.now().add(3, DATETIME_UNIT.DAY),
+        true
+      ),
+      createMockEntry(
+        "5",
+        DateTime.now(),
+        DateTime.now().add(1, DATETIME_UNIT.DAY),
+        true
+      ),
+      createMockEntry(
+        "6",
+        DateTime.now(),
+        DateTime.now().add(2, DATETIME_UNIT.DAY),
+        true
+      ),
+      createMockEntry(
+        "7",
+        DateTime.now().add(2, DATETIME_UNIT.DAY),
+        DateTime.now().add(6, DATETIME_UNIT.DAY),
+        true
+      ),
+      createMockEntry(
+        "8",
+        DateTime.now().add(-5, DATETIME_UNIT.DAY),
+        DateTime.now().add(9, DATETIME_UNIT.DAY),
+        true
+      ),
+    ];
+
+    const result = engine.compute(entries, thisWeek);
+
+    console.log(result);
   });
 });

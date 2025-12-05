@@ -26,6 +26,8 @@ export class CalendarLayoutEngine {
     const lastEndOfLevel: Array<number> = [];
     const rangeLength = duration.toArray().length;
 
+    console.log(sorted);
+
     for (const span of sorted) {
       let level = 0;
       let startPos = span.startDate!.diff(duration.startDate);
@@ -38,7 +40,7 @@ export class CalendarLayoutEngine {
         );
       } else {
         spanLength = Math.min(
-          span.endDate!.diff(span.startDate!) + 1,
+          duration.endDate!.diff(span.startDate!) + 1,
           rangeLength
         );
       }
@@ -51,9 +53,9 @@ export class CalendarLayoutEngine {
       }
 
       if (level === lastEndOfLevel.length) {
-        lastEndOfLevel.push(spanLength);
+        lastEndOfLevel.push(Math.max(startPos, 0) + spanLength);
       } else {
-        lastEndOfLevel[level] = spanLength;
+        lastEndOfLevel[level] = Math.max(startPos, 0) + spanLength;
       }
 
       state.set(span.id, {
