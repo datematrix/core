@@ -1,7 +1,7 @@
 import { DateTime, Duration } from "./date";
-import { type EntryConfig } from "./entry";
+import { type EntryConfig, type EntryWithDuration } from "./entry";
 
-export interface IndexedEntry {
+export interface EngineEntryRef {
   id: string;
   startDate?: DateTime;
   endDate?: DateTime;
@@ -9,13 +9,13 @@ export interface IndexedEntry {
 }
 
 export class CalendarEngine {
-  state: Array<IndexedEntry>;
+  state: Array<EngineEntryRef>;
 
   constructor() {
     this.state = [];
   }
 
-  search(range: Duration): Array<IndexedEntry> {
+  search(range: Duration): Array<EngineEntryRef> {
     return this.state
       .filter((entry) => {
         if (!entry.startDate) return false;
@@ -48,14 +48,14 @@ export class CalendarEngine {
     this.state = this.state.filter((entry) => entry.id !== id);
   }
 
-  add(config: EntryConfig) {
+  add(config: EntryWithDuration) {
     const { id, startDate, endDate, allDay } = config;
     this.state = this.state.concat({ id, startDate, endDate, allDay });
   }
 
   update(
     id: EntryConfig["id"],
-    patch: Pick<Partial<EntryConfig>, "startDate" | "endDate" | "allDay">
+    patch: Pick<EntryWithDuration, "startDate" | "endDate" | "allDay">
   ) {
     this.state = this.state.map((entry) =>
       entry.id === id ? { ...entry, ...patch } : entry

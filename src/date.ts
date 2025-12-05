@@ -148,7 +148,7 @@ export class DateTime {
   }
 
   /**
-   * DateTime 간의 차이를 계산하는 기능을 제공합니다.
+   * DateTime 간의 차이를 계산하는 기능을 제공합니다. 인자로 받은 날짜가 크다면 음수를 반환합니다.
    * @param datetime - 비교 대상이 될 DateTime 객체
    * @param unit - 시간 단위
    */
@@ -437,7 +437,7 @@ export class Duration {
    * 구간 사이의 모든 날짜를 DateTime Array로 반환한다.
    */
   toArray(): DateTime[] {
-    const diff = this._start.diff(this._end, DATETIME_UNIT.DAY);
+    const diff = this._end.diff(this._start, DATETIME_UNIT.DAY);
     return Array.from({ length: diff + 1 }, (_, i) =>
       this._start.add(i, DATETIME_UNIT.DAY)
     );

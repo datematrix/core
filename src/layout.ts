@@ -1,5 +1,5 @@
 import { type Duration } from "./date";
-import type { IndexedEntry } from "./engine";
+import type { EngineEntryRef } from "./engine";
 
 export interface LayoutState {
   id: string;
@@ -9,7 +9,7 @@ export interface LayoutState {
 }
 
 export class CalendarLayoutEngine {
-  private sortEntries<T extends IndexedEntry>(entries: T[]) {
+  private sortEntries<T extends EngineEntryRef>(entries: T[]) {
     return [...entries].sort((a, b) => {
       if (a.startDate!.getTime() === b.startDate!.getTime()) {
         return b.endDate!.getTime() - a.endDate!.getTime();
@@ -19,26 +19,26 @@ export class CalendarLayoutEngine {
     });
   }
 
-  compute<T extends IndexedEntry>(entries: T[], range: Duration) {
+  compute<T extends EngineEntryRef>(entries: T[], duration: Duration) {
     const sorted = this.sortEntries(entries);
 
     const state = new Map<string, LayoutState>();
     const lastEndOfLevel: Array<number> = [];
-    const rangeLength = range.toArray().length;
+    const rangeLength = duration.toArray().length;
 
     for (const span of sorted) {
       let level = 0;
-      let startPos = range.startDate.diff(span.startDate!);
+      let startPos = span.startDate!.diff(duration.startDate);
       let spanLength = 0;
 
-      if (span.startDate!.isBefore(range.startDate)) {
+      if (startPos < 0) {
         spanLength = Math.min(
-          range.startDate.diff(span.endDate!) + 1,
+          span.endDate!.diff(duration.startDate) + 1,
           rangeLength
         );
       } else {
         spanLength = Math.min(
-          span.startDate!.diff(span.endDate!) + 1,
+          span.endDate!.diff(span.startDate!) + 1,
           rangeLength
         );
       }

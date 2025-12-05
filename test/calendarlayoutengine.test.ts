@@ -1,5 +1,5 @@
 import { DateTime, DATETIME_UNIT, WEEK_STARTS_ON } from "../src/date";
-import { IndexedEntry } from "../src/engine";
+import { EngineEntryRef } from "../src/engine";
 import { CalendarLayoutEngine } from "../src/layout";
 import { describe, expect, it, test } from "vitest"; // <-- **
 
@@ -8,7 +8,7 @@ const createMockEntry = (
   endDate: DateTime,
   allDay: boolean,
   id?: string
-): IndexedEntry => {
+): EngineEntryRef => {
   id = id ?? Math.random().toString(36).slice(2);
   return {
     id,
@@ -23,7 +23,7 @@ describe("CalendarLayoutEngine", () => {
     const engine = new CalendarLayoutEngine();
     const now = DateTime.now();
     const thisWeek = now.range("week", WEEK_STARTS_ON.MON);
-    const entries: IndexedEntry[] = [];
+    const entries: EngineEntryRef[] = [];
 
     // Entry 1
     const entry1_startDate = thisWeek.startDate.add(-3, DATETIME_UNIT.DAY);
