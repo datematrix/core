@@ -1,4 +1,4 @@
-import { type Duration } from "./date";
+import { DATETIME_UNIT, type Duration } from "./date";
 import type { EngineEntryRef } from "./engine";
 import type { ScheduledEntry } from "./entry";
 import { sortEntriesWithDuration } from "./utils";
@@ -82,6 +82,15 @@ export class CalendarLayoutEngine {
     const minuteOffset = (minutes / minutesPerPiece) * pieceHeight;
 
     return hourOffset + minuteOffset;
+  }
+
+  static heightFromTime(entry: ScheduledEntry, blockHeight: number = 84) {
+    const minutes = entry.endDate.diff(entry.startDate, DATETIME_UNIT.MINUTE);
+
+    const pieceHeight = blockHeight / 12; // 5분 단위로 움직임
+    const minutesPerPiece = 60 / 12;
+
+    return (minutes / minutesPerPiece) * pieceHeight;
   }
 
   /**
