@@ -78,7 +78,8 @@ export class Entry<TConfig extends EntryConfig> {
 
   static factory(config: EntryWithoutDuration): UnscheduledEntry;
   static factory(
-    config: Omit<EntryWithDuration, "endDate" | "allDay"> & {
+    config: Omit<EntryWithDuration, "startDate" | "endDate" | "allDay"> & {
+      startDate?: DateTime;
       endDate?: DateTime;
       allDay?: boolean;
     }
@@ -208,7 +209,11 @@ export class ScheduledEntry extends Entry<EntryWithDuration> {
    */
   update(config: Partial<EntryWithoutDuration>): UnscheduledEntry;
   update(
-    config: Partial<Omit<EntryWithDuration, "endDate"> & { endDate?: DateTime }>
+    config: Omit<EntryWithDuration, "startDate" | "endDate" | "allDay"> & {
+      startDate?: DateTime;
+      endDate?: DateTime;
+      allDay?: boolean;
+    }
   ): ScheduledEntry;
   update(
     config: Partial<EntryFactoryConfig>
@@ -267,12 +272,11 @@ export class UnscheduledEntry extends Entry<EntryWithoutDuration> {
    */
   update(config: Partial<EntryWithoutDuration>): UnscheduledEntry;
   update(
-    config: Partial<
-      Omit<EntryWithDuration, "endDate" | "allDay"> & {
-        endDate?: DateTime;
-        allDay: boolean;
-      }
-    >
+    config: Omit<EntryWithDuration, "startDate" | "endDate" | "allDay"> & {
+      startDate?: DateTime;
+      endDate?: DateTime;
+      allDay?: boolean;
+    }
   ): ScheduledEntry;
   update(
     config: Partial<EntryFactoryConfig>
@@ -289,7 +293,6 @@ export class UnscheduledEntry extends Entry<EntryWithoutDuration> {
       ...this._config,
       ...config,
       startDate: config.startDate,
-      allDay: config.allDay ?? false,
     });
   }
 }
