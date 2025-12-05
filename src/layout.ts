@@ -26,13 +26,13 @@ export class CalendarLayoutEngine {
 
       if (startPos < 0) {
         spanLength = Math.min(
-          span.endDate!.diff(duration.startDate) + 1,
+          span.endDate.diff(duration.startDate) + 1,
           rangeLength
         );
       } else {
         spanLength = Math.min(
-          duration.endDate!.diff(span.startDate!) + 1,
-          rangeLength
+          span.endDate.diff(span.startDate) + 1,
+          rangeLength - startPos
         );
       }
 

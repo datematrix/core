@@ -192,4 +192,84 @@ describe("CalendarLayoutEngine", () => {
 
     console.log(result);
   });
+
+  it("test2", () => {
+    const engine = new CalendarLayoutEngine();
+    const now = DateTime.now();
+    const thisWeek = now.range("week", WEEK_STARTS_ON.MON);
+    const createMockEntry = (
+      id: string,
+      startDate: DateTime = DateTime.now(),
+      endDate: DateTime = DateTime.now().add(1, "day"),
+      allDay: boolean = false
+    ) => {
+      return {
+        id,
+        title: `Entry ${id}`,
+        startDate,
+        endDate,
+        priority: ENTRY_PRIORITY.P2,
+        tags: [],
+        status: ENTRY_STATUS.DEFAULT,
+        allDay,
+        completed: false,
+        type: ENTRY_TYPE.EVENT,
+      };
+    };
+
+    const entries = [
+      createMockEntry(
+        "1",
+        DateTime.now().setTime(9, 0),
+        DateTime.now().setTime(12, 0),
+        false
+      ),
+      createMockEntry(
+        "2",
+        DateTime.now().setTime(13, 0),
+        DateTime.now().setTime(15, 30),
+        false
+      ),
+      createMockEntry(
+        "3",
+        DateTime.now().setTime(4, 30),
+        DateTime.now().setTime(7, 15),
+        false
+      ),
+      createMockEntry(
+        "4",
+        DateTime.now().add(-1, DATETIME_UNIT.DAY).setTime(9, 30),
+        DateTime.now().add(-1, DATETIME_UNIT.DAY).setTime(12, 30),
+        false
+      ),
+      createMockEntry(
+        "5",
+        DateTime.now(),
+        DateTime.now().add(1, DATETIME_UNIT.DAY),
+        true
+      ),
+      createMockEntry(
+        "6",
+        DateTime.now(),
+        DateTime.now().add(2, DATETIME_UNIT.DAY),
+        true
+      ),
+      createMockEntry(
+        "7",
+        DateTime.now().add(2, DATETIME_UNIT.DAY),
+        DateTime.now().add(6, DATETIME_UNIT.DAY),
+        true
+      ),
+      createMockEntry(
+        "8",
+        DateTime.now().add(-5, DATETIME_UNIT.DAY),
+        DateTime.now().add(9, DATETIME_UNIT.DAY),
+        true
+      ),
+    ];
+
+    const result = engine.compute(entries, thisWeek);
+
+    console.log(result);
+  });
 });
