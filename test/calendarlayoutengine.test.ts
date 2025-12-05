@@ -218,29 +218,14 @@ describe("CalendarLayoutEngine", () => {
     };
 
     const entries = [
-      createMockEntry(
-        "1",
-        DateTime.now().setTime(9, 0),
-        DateTime.now().setTime(12, 0),
-        false
-      ),
-      createMockEntry(
-        "2",
-        DateTime.now().setTime(13, 0),
-        DateTime.now().setTime(15, 30),
-        false
-      ),
-      createMockEntry(
-        "3",
-        DateTime.now().setTime(4, 30),
-        DateTime.now().setTime(7, 15),
-        false
-      ),
+      createMockEntry("1"),
+      createMockEntry("2"),
+      createMockEntry("3"),
       createMockEntry(
         "4",
-        DateTime.now().add(-1, DATETIME_UNIT.DAY).setTime(9, 30),
-        DateTime.now().add(-1, DATETIME_UNIT.DAY).setTime(12, 30),
-        false
+        DateTime.now(),
+        DateTime.now().add(3, DATETIME_UNIT.DAY),
+        true
       ),
       createMockEntry(
         "5",
