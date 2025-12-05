@@ -157,7 +157,7 @@ export class DateTime {
     datetime: DateTime,
     unit: Exclude<DateTimeUnit, "date"> = DATETIME_UNIT.DAY
   ): number {
-    return this.utc.diff(datetime.utc, unit);
+    return this._view.diff(datetime._view, unit);
   }
 
   /**
