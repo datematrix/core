@@ -1,7 +1,7 @@
 import { DATETIME_UNIT, type Duration } from "./date";
 import type { EngineEntryRef } from "./engine";
 import type { ScheduledEntry } from "./entry";
-import { sortEntriesWithDuration } from "./utils";
+import { sortEntries } from "./utils";
 
 export interface LayoutState {
   id: string;
@@ -12,7 +12,6 @@ export interface LayoutState {
 
 export class CalendarLayoutEngine {
   compute<T extends EngineEntryRef>(entries: T[], duration: Duration) {
-    const sortEntries = sortEntriesWithDuration(duration);
     const sorted = entries.sort(sortEntries);
 
     const state = new Map<string, LayoutState>();
