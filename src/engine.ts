@@ -1,5 +1,9 @@
 import { DateTime, Duration } from "./date";
-import { type EntryConfig, type EntryWithDuration } from "./entry";
+import {
+  ScheduledEntry,
+  type EntryConfig,
+  type EntryWithDuration,
+} from "./entry";
 
 export interface EngineEntryRef {
   id: string;
@@ -48,7 +52,7 @@ export class CalendarEngine {
     this.state = this.state.filter((entry) => entry.id !== id);
   }
 
-  add(config: EntryWithDuration) {
+  add(config: ScheduledEntry) {
     const { id, startDate, endDate, allDay } = config;
     this.state = this.state.concat({ id, startDate, endDate, allDay });
   }
