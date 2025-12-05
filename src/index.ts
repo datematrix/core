@@ -8,6 +8,8 @@ export {
 } from "./date";
 export {
   type EntryConfig,
+  type EntryWithDuration,
+  type EntryWithoutDuration,
   Entry,
   ENTRY_PRIORITY,
   ENTRY_STATUS,
