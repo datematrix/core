@@ -53,6 +53,7 @@ export interface EntryWithDuration extends BaseEntryConfig {
 export interface EntryWithoutDuration extends BaseEntryConfig {
   startDate?: undefined;
   endDate?: undefined;
+  allDay?: undefined;
 }
 
 export interface EntryFactoryConfig extends BaseEntryConfig {
@@ -217,6 +218,7 @@ export class ScheduledEntry extends Entry<EntryWithDuration> {
         ...this._config,
         startDate: undefined,
         endDate: undefined,
+        allDay: undefined,
       });
     }
     return Entry.factory({ ...this._config, ...config });
