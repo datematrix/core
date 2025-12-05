@@ -114,8 +114,9 @@ export class DateTime {
     // ! milliseconds값은 로컬 기준으로 들어온다고 가정.
     this.tz = tz ?? dayjs.tz.guess();
     this.timezoneOffset = dayjs().tz(this.tz).utcOffset();
-    this.utc = new UTC(ms);
-    this._view = dayjs(ms).tz(this.tz);
+    const _ms = truncateTime(ms);
+    this.utc = new UTC(_ms);
+    this._view = dayjs(_ms).tz(this.tz);
   }
 
   static now(tz?: string) {
