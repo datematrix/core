@@ -2,7 +2,7 @@ import { DATETIME_UNIT } from "./date";
 import type { EngineEntryRef } from "./engine";
 
 export const sortEntries = (entryA: EngineEntryRef, entryB: EngineEntryRef) => {
-  let startDiff = entryA.startDate.diff(entryB.startDate);
+  let startDiff = entryA.startDate.diff(entryB.startDate, DATETIME_UNIT.DAY);
 
   if (startDiff !== 0) return startDiff;
 

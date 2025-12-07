@@ -190,8 +190,6 @@ describe("CalendarLayoutEngine", () => {
     ];
 
     const result = engine.compute(entries, thisWeek);
-
-    console.log(result);
   });
 
   it("test2", () => {
