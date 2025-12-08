@@ -444,8 +444,8 @@ export class Duration {
     if (start.isAfter(end)) {
       throw Error("End date must be after start date");
     }
-    this._start = start;
-    this._end = end;
+    this._start = start.startOf(DATETIME_UNIT.DAY);
+    this._end = end.endOf(DATETIME_UNIT.DAY);
   }
 
   /**
