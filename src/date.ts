@@ -444,8 +444,8 @@ export class Duration {
     if (start.isAfter(end)) {
       throw Error("End date must be after start date");
     }
-    this._start = start.startOf(DATETIME_UNIT.DAY);
-    this._end = end.endOf(DATETIME_UNIT.DAY);
+    this._start = start;
+    this._end = end;
   }
 
   /**
@@ -467,7 +467,7 @@ export class Duration {
    */
   toArray(): DateTime[] {
     const diff = this._end.diff(this._start, DATETIME_UNIT.DAY);
-    return Array.from({ length: diff }, (_, i) =>
+    return Array.from({ length: diff + 1 }, (_, i) =>
       this._start.add(i, DATETIME_UNIT.DAY)
     );
   }
