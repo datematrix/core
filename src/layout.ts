@@ -20,17 +20,17 @@ export class CalendarLayoutEngine {
 
     for (const span of sorted) {
       let level = 0;
-      let startPos = span.startDate!.diff(duration.startDate);
+      let startPos = span.startDate.diff(duration.startDate);
       let spanLength = 0;
 
       if (startPos < 0) {
         spanLength = Math.min(
-          span.endDate.diff(duration.startDate) + 1,
+          Math.max(span.endDate.diff(duration.startDate), 1),
           rangeLength
         );
       } else {
         spanLength = Math.min(
-          span.endDate.diff(span.startDate) + 1,
+          Math.max(span.endDate.diff(span.startDate), 1),
           rangeLength - startPos
         );
       }
