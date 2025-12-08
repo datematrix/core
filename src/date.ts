@@ -159,11 +159,7 @@ export class DateTime {
   ): number {
     if (unit === DATETIME_UNIT.DAY) {
       const hours = this._view.diff(datetime._view, DATETIME_UNIT.HOUR);
-      if (Math.abs(hours) < 24) {
-        const dayA = this._view.get(DATETIME_UNIT.DATE);
-        const dayB = datetime._view.get(DATETIME_UNIT.DATE);
-        return dayA - dayB;
-      }
+      return Math.ceil(hours / 24);
     }
 
     if (unit === DATETIME_UNIT.MONTH) {
