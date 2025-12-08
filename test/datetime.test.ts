@@ -408,3 +408,20 @@ describe("DateTime - now / fromDate", () => {
     expect(dt.tz).toBe(PRAGUE);
   });
 });
+
+describe("DateTime - range", () => {
+  beforeAll(() => {
+    vi.setSystemTime(FIXED_LOCAL);
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
+  it("range는 Duration을 생성한다.", () => {
+    const date = new Date(FIXED_LOCAL.getTime());
+    const dt = DateTime.fromDate(date);
+
+    console.log(dt.range(DATETIME_UNIT.WEEK, WEEK_STARTS_ON.MON).toArray());
+  });
+});
