@@ -164,7 +164,6 @@ export class DateTime {
         const dayB = datetime._view.get(DATETIME_UNIT.DATE);
         return dayA - dayB;
       }
-      return Math.ceil(hours / 24);
     }
 
     if (unit === DATETIME_UNIT.MONTH) {
