@@ -21,18 +21,24 @@ export class CalendarLayoutEngine {
     for (const span of sorted) {
       let level = 0;
       let startPos = span.startDate.diff(duration.startDate);
+      let endPos = duration.endDate.diff(span.endDate);
       let spanLength = 0;
 
+      // entry가 Duration 이전부터 시작하는 경우
       if (startPos < 0) {
         spanLength = Math.min(
-          Math.max(span.endDate.diff(duration.startDate), 1),
+          Math.max(span.endDate.diff(duration.startDate) + 1, 1),
           rangeLength
         );
-      } else {
+      }
+      // entry가 Duration 이후에 끝나는 경우
+      else if (endPos < 0) {
         spanLength = Math.min(
-          Math.max(span.endDate.diff(span.startDate), 1),
+          Math.max(duration.endDate.diff(span.startDate) + 1, 1),
           rangeLength - startPos
         );
+      } else {
+        spanLength = span.endDate.diff(span.startDate) + 1;
       }
 
       while (

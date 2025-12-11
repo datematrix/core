@@ -465,7 +465,7 @@ export class Duration {
    * 구간 사이의 모든 날짜를 DateTime Array로 반환한다.
    */
   toArray(): DateTime[] {
-    const diff = this._end.diff(this._start, DATETIME_UNIT.DAY);
+    const diff = this._end.diff(this._start, DATETIME_UNIT.DAY) + 1;
     return Array.from({ length: Math.max(diff, 1) }, (_, i) =>
       this._start.add(i, DATETIME_UNIT.DAY)
     );
