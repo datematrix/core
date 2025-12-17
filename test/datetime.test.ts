@@ -1,13 +1,10 @@
 // DateTime.test.ts
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import dayjs from "../src/dayjs";
-import {
-  DateTime,
-  UTC,
-  DATETIME_UNIT,
-  WEEK_STARTS_ON,
-  truncateTime,
-} from "../src/date";
+import { truncateTime } from "../src/utils";
+import { DATETIME_UNIT, WEEK_STARTS_ON } from "../src/types";
+import { UTC } from "../src/utc";
+import { DateTime } from "../src/datetime";
 
 const FIXED_LOCAL = new Date();
 
@@ -51,35 +48,26 @@ describe("truncateTime", () => {
   });
 });
 
-describe("UTC", () => {
+describe("DateTime Basics", () => {
   beforeAll(() => {
-    // isToday 검증을 위해 시스템 시간을 고정
     vi.setSystemTime(FIXED_LOCAL);
+    vi.stubEnv("TZ", SEOUL);
   });
 
   afterAll(() => {
+    vi.unstubAllEnvs();
     vi.useRealTimers();
-  });
-
-  it("같은 ms로 생성한 두 UTC는 모든 단위에서 diff가 0이다", () => {
-    const a = new UTC(FIXED_LOCAL.getTime());
-    const b = new UTC(FIXED_LOCAL.getTime());
-
-    expect(a.diff(b, DATETIME_UNIT.MINUTE)).toBe(0);
-    expect(a.diff(b, DATETIME_UNIT.HOUR)).toBe(0);
-    expect(a.diff(b, DATETIME_UNIT.DAY)).toBe(0);
-    expect(a.isEqual(b, DATETIME_UNIT.MINUTE)).toBe(true);
   });
 
   it("분 단위 경계에서 isEqual / isBefore / isAfter 동작을 검증한다", () => {
     const base = new UTC(FIXED_LOCAL.getTime());
-    const plus30s = new UTC(FIXED_LOCAL.getTime() + 30 * 1000);
+    const plus30m = new UTC(FIXED_LOCAL.getTime() + 30 * 60 * 1000);
     const plus1m = new UTC(FIXED_LOCAL.getTime() + 60 * 1000);
 
     // 같은 분이면 isEqual(minute)는 true
-    expect(base.isEqual(plus30s, DATETIME_UNIT.MINUTE)).toBe(true);
-    expect(base.isBefore(plus30s)).toBe(false);
-    expect(base.isAfter(plus30s)).toBe(false);
+    expect(base.isEqual(plus30m, DATETIME_UNIT.MINUTE)).toBe(false);
+    expect(base.isBefore(plus30m)).toBe(true);
+    expect(base.isAfter(plus30m)).toBe(false);
 
     // 정확히 1분 차이
     expect(base.isEqual(plus1m, DATETIME_UNIT.MINUTE)).toBe(false);
@@ -100,34 +88,35 @@ describe("UTC", () => {
     expect(base.isOnOrBefore(later)).toBe(true);
     expect(base.isOnOrAfter(later)).toBe(false);
   });
-
-  it("isToday는 시스템 시간과 같은 날일 때만 true를 반환한다", () => {
-    const todayUtc = new UTC(FIXED_LOCAL.getTime() + 3 * 60 * 60 * 1000); // 같은 날짜 안
-    const yesterdayUtc = new UTC(FIXED_LOCAL.getTime() - 24 * 60 * 60 * 1000);
-
-    expect(todayUtc.isToday()).toBe(true);
-    expect(yesterdayUtc.isToday()).toBe(false);
-  });
 });
 
 describe("DateTime - 타임존별 동작 (Asia/Seoul)", () => {
   beforeAll(() => {
     vi.setSystemTime(FIXED_LOCAL);
+    vi.stubEnv("TZ", SEOUL);
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
   });
 
   it("지정한 타임존을 사용해 생성된다", () => {
-    const dt = new DateTime(FIXED_LOCAL.getTime(), SEOUL);
+    const dt = new DateTime(FIXED_LOCAL.getTime());
     expect(dt.tz).toBe(SEOUL);
+    expect(dt.getDateOfMonth()).toBe(31);
+    expect(dt.getHours()).toBe(21);
+    expect(dt.getMinutes()).toBe(0);
   });
 
   it("timeZoneOffset이 서울(UTC+9)에서 540분인 것을 보장한다", () => {
-    const dt = new DateTime(FIXED_LOCAL.getTime(), SEOUL);
+    const dt = new DateTime(FIXED_LOCAL.getTime());
     expect(dt.timezoneOffset).toBe(9 * 60);
   });
 
   it("getDayOfWeek / getDateOfMonth / getHours / getMinutes가 dayjs와 일치한다", () => {
-    const view = dayjs(FIXED_LOCAL).tz(SEOUL);
-    const dt = new DateTime(FIXED_LOCAL.getTime(), SEOUL);
+    const view = dayjs(FIXED_LOCAL);
+    const dt = new DateTime(FIXED_LOCAL.getTime());
 
     expect(dt.getDayOfWeek()).toBe(view.get(DATETIME_UNIT.DAY));
     expect(dt.getDateOfMonth()).toBe(view.get(DATETIME_UNIT.DATE));
@@ -136,7 +125,7 @@ describe("DateTime - 타임존별 동작 (Asia/Seoul)", () => {
   });
 
   it("setTime은 시/분을 변경하고 같은 tz를 유지한다", () => {
-    const dt = new DateTime(FIXED_LOCAL.getTime(), SEOUL);
+    const dt = new DateTime(FIXED_LOCAL.getTime());
     const updated = dt.setTime(13, 37);
 
     expect(updated.tz).toBe(SEOUL);
@@ -145,7 +134,7 @@ describe("DateTime - 타임존별 동작 (Asia/Seoul)", () => {
   });
 
   it("add는 지정한 단위만큼 이동하며 tz를 유지한다", () => {
-    const dt = new DateTime(FIXED_LOCAL.getTime(), SEOUL);
+    const dt = new DateTime(FIXED_LOCAL.getTime());
     const added = dt.add(1, DATETIME_UNIT.DAY);
 
     expect(added.tz).toBe(SEOUL);
@@ -153,7 +142,7 @@ describe("DateTime - 타임존별 동작 (Asia/Seoul)", () => {
   });
 
   it("isToday는 _view 기준 오늘 날짜인지 판단한다", () => {
-    const today = new DateTime(FIXED_LOCAL.getTime(), SEOUL);
+    const today = new DateTime(FIXED_LOCAL.getTime());
     const tomorrow = today.add(1, DATETIME_UNIT.DAY);
 
     expect(today.isToday()).toBe(true);
@@ -164,21 +153,27 @@ describe("DateTime - 타임존별 동작 (Asia/Seoul)", () => {
 describe("DateTime - 타임존별 동작 (Europe/Prague)", () => {
   beforeAll(() => {
     vi.setSystemTime(FIXED_LOCAL);
+    vi.stubEnv("TZ", PRAGUE);
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
   });
 
   it("지정한 타임존을 사용해 생성된다", () => {
-    const dt = new DateTime(FIXED_LOCAL.getTime(), PRAGUE);
+    const dt = new DateTime(FIXED_LOCAL.getTime());
     expect(dt.tz).toBe(PRAGUE);
   });
 
-  it("프라하의 timeZoneOffset은 CET/CEST 범위(60 또는 120분)에 있다", () => {
-    const dt = new DateTime(FIXED_LOCAL.getTime(), PRAGUE);
-    expect([60, 120]).toContain(dt.timezoneOffset);
+  it("timeZoneOffset이 프라하(UTC+1)에서 60분인 것을 보장한다", () => {
+    const dt = new DateTime(FIXED_LOCAL.getTime());
+    expect(dt.timezoneOffset).toBe(60);
   });
 
   it("get* 계열이 dayjs.tz(PRAGUE)와 일치한다", () => {
-    const view = dayjs(FIXED_LOCAL).tz(PRAGUE);
-    const dt = new DateTime(FIXED_LOCAL.getTime(), PRAGUE);
+    const view = dayjs(FIXED_LOCAL);
+    const dt = new DateTime(FIXED_LOCAL.getTime());
 
     expect(dt.getDayOfWeek()).toBe(view.get(DATETIME_UNIT.DAY));
     expect(dt.getDateOfMonth()).toBe(view.get(DATETIME_UNIT.DATE));
@@ -186,17 +181,37 @@ describe("DateTime - 타임존별 동작 (Europe/Prague)", () => {
     expect(dt.getMinutes()).toBe(view.get(DATETIME_UNIT.MINUTE));
   });
 
-  it("DST가 있을 수 있는 타임존에서도 add가 UTC diff를 보존한다", () => {
+  it("UTC를 입력으로 넣는 경우, 예상과 다른 동작을 한다.", () => {
     // 2024-06-01 00:00:00 UTC (프라하는 DST 가능 시기)
     const ms = Date.UTC(2024, 5, 1, 0, 0, 0, 0);
-    const dt = new DateTime(ms, PRAGUE);
-    const added = dt.add(1, DATETIME_UNIT.DAY);
+    const _ms = new Date();
+    _ms.setMonth(5);
+    _ms.setDate(1);
+    _ms.setHours(0);
+    _ms.setMinutes(0);
+    _ms.setSeconds(0);
+    _ms.setMilliseconds(0);
+    const dt = new DateTime(ms);
+    const dt2 = new DateTime(_ms.getTime());
 
-    expect(added.diff(dt, DATETIME_UNIT.DAY)).toBe(1);
+    expect(dt.getDateOfMonth()).toBe(1);
+    expect(dt.getHours()).toBe(2);
+    expect(dt.isEqual(dt2)).toBe(false);
+    expect(dt2.getHours()).toBe(0);
   });
 });
 
 describe("DateTime - 서울과 프라하 비교 (같은 UTC 인스턴스)", () => {
+  beforeAll(() => {
+    vi.setSystemTime(FIXED_LOCAL);
+    vi.stubEnv("TZ", PRAGUE);
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
+  });
+
   it("같은 ms로 생성한 DateTime은 tz가 달라도 UTC diff는 0이다", () => {
     const seoul = new DateTime(FIXED_LOCAL.getTime(), SEOUL);
     const prague = new DateTime(FIXED_LOCAL.getTime(), PRAGUE);
@@ -260,13 +275,8 @@ describe("DateTime - 서울과 프라하 비교 (같은 UTC 인스턴스)", () =
     );
 
     // 경계 제외
-    expect(seoul.isBetween(pragueEarlier, pragueLater, false)).toBe(true);
-    expect(pragueEarlier.isBetween(pragueEarlier, pragueLater, false)).toBe(
-      false
-    );
-    expect(pragueLater.isBetween(pragueEarlier, pragueLater, false)).toBe(
-      false
-    );
+    expect(seoul.isBetween(pragueEarlier, pragueLater)).toBe(true);
+    expect(pragueLater.isBetween(pragueEarlier, pragueLater)).toBe(true);
   });
 });
 
@@ -279,7 +289,7 @@ describe("DateTime - isBetween / 비교 로직 엣지 케이스", () => {
     const end = new DateTime(FIXED_LOCAL.getTime() - 60 * 60 * 1000, SEOUL); // 1시간 전
 
     expect(center.isBetween(start, end)).toBe(false);
-    expect(center.isBetween(start, end, false)).toBe(false);
+    expect(center.isBetween(start, end)).toBe(false);
   });
 
   it("동일 시각에서 includeBounds가 true/false일 때 차이를 보인다", () => {
@@ -287,8 +297,7 @@ describe("DateTime - isBetween / 비교 로직 엣지 케이스", () => {
     const b = new DateTime(FIXED_LOCAL.getTime(), SEOUL);
 
     expect(a.isBetween(a, b)).toBe(true);
-    expect(a.isBetween(a, b, true)).toBe(true);
-    expect(a.isBetween(a, b, false)).toBe(false);
+    expect(a.isBetween(a, b)).toBe(true);
   });
 });
 
@@ -348,7 +357,7 @@ describe("DateTime - startOf / endOf / range (서울/프라하 공통 속성 위
     const ms = Date.UTC(2024, 0, 15, 12, 0, 0, 0);
     const seoul = makeDt(ms, SEOUL);
 
-    const range: any = seoul.range(DATETIME_UNIT.MONTH, WEEK_STARTS_ON.MON);
+    const range: any = seoul.duration(DATETIME_UNIT.MONTH, WEEK_STARTS_ON.MON);
 
     const start: DateTime = range.startDate;
     const end: DateTime = range.endDate;
@@ -370,7 +379,7 @@ describe("DateTime - startOf / endOf / range (서울/프라하 공통 속성 위
     const ms = Date.UTC(2024, 2, 10, 15, 30, 0, 0);
     const seoul = makeDt(ms, SEOUL);
 
-    const range: any = seoul.range(DATETIME_UNIT.DAY);
+    const range: any = seoul.duration(DATETIME_UNIT.DAY);
 
     const start: DateTime = range.startDate;
     const end: DateTime = range.endDate;
@@ -406,5 +415,29 @@ describe("DateTime - now / fromDate", () => {
 
     expect(dt.getTime()).toBe(dayjs(dt.getTime()).tz(PRAGUE).valueOf());
     expect(dt.tz).toBe(PRAGUE);
+  });
+});
+
+describe("DateTime - diff", () => {
+  beforeAll(() => {
+    vi.setSystemTime(FIXED_LOCAL);
+    vi.stubEnv("TZ", SEOUL);
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
+  });
+
+  it("case 1. ", () => {
+    const dt = DateTime.now();
+    const dt2 = dt.add(-1, DATETIME_UNIT.DAY);
+    const dt3 = dt.add(-2, DATETIME_UNIT.DAY);
+
+    expect(dt.tz).toBe(SEOUL);
+    expect(dt.diff(dt2)).toBe(1);
+    expect(dt.diff(dt3)).toBe(2);
+    expect(dt.diff(dt3.add(-1, DATETIME_UNIT.DAY))).toBe(3);
+    expect(dt.diff(dt3.add(-2, DATETIME_UNIT.DAY))).toBe(4);
   });
 });

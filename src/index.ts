@@ -1,11 +1,11 @@
+export { DateTime } from "./datetime";
+export { Duration } from "./duration";
 export {
-  DateTime,
-  Duration,
   WEEK_STARTS_ON,
   DATETIME_UNIT,
   type DateTimeUnit,
   type WeekStartsOnType,
-} from "./date";
+} from "./types";
 export {
   type EntryWithDuration,
   type EntryWithoutDuration,

@@ -1,4 +1,5 @@
-import { DateTime, DATETIME_UNIT, WEEK_STARTS_ON } from "../src/date";
+import { DATETIME_UNIT, WEEK_STARTS_ON } from "../src/types";
+import { DateTime } from "../src/datetime";
 import { EngineEntryRef } from "../src/engine";
 import { ENTRY_PRIORITY, ENTRY_STATUS, ENTRY_TYPE } from "../src/entry";
 import { CalendarLayoutEngine } from "../src/layout";
@@ -22,7 +23,7 @@ const createMockEntry = (
 
 describe("CalendarLayoutEngine", () => {
   const now = DateTime.now();
-  const thisWeek = now.range("week", WEEK_STARTS_ON.MON);
+  const thisWeek = now.duration("week", WEEK_STARTS_ON.MON);
   it("UTC ms 입력을 정확히 분해해야 한다", () => {
     const engine = new CalendarLayoutEngine();
     const entries: EngineEntryRef[] = [];
@@ -132,7 +133,7 @@ describe("CalendarLayoutEngine", () => {
   it("test", () => {
     const engine = new CalendarLayoutEngine();
     const now = DateTime.now();
-    const thisWeek = now.range("week", WEEK_STARTS_ON.MON);
+    const thisWeek = now.duration("week", WEEK_STARTS_ON.MON);
     const createMockEntry = (
       id: string,
       startDate: DateTime = DateTime.now(),
@@ -195,7 +196,7 @@ describe("CalendarLayoutEngine", () => {
   it("test2", () => {
     const engine = new CalendarLayoutEngine();
     const now = DateTime.now();
-    const thisWeek = now.range("week", WEEK_STARTS_ON.MON);
+    const thisWeek = now.duration("week", WEEK_STARTS_ON.MON);
     const createMockEntry = (
       id: string,
       startDate: DateTime = DateTime.now(),

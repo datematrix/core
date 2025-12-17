@@ -1,4 +1,5 @@
-import { DateTime, DATETIME_UNIT } from "./date";
+import { DateTime } from "./datetime";
+import { DATETIME_UNIT } from "./types";
 
 export const ENTRY_PRIORITY = {
   P0: 0,

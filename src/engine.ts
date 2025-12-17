@@ -1,4 +1,5 @@
-import { DateTime, Duration } from "./date";
+import { DateTime } from "./datetime";
+import { Duration } from "./duration";
 import {
   ScheduledEntry,
   type EntryConfig,
